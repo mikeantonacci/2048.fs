@@ -8,12 +8,22 @@ let shift n = pad n << List.filter (fun (x: int option) -> x <> None)
 let rec merge a = match a with
                     | [] -> []
                     | [x] -> [x]
-                    | (x :: y :: xs) -> if x = y then None :: Option.map ((*) 2) x :: merge xs else x :: merge (y :: xs)
+                    | (x :: y :: xs) -> if x = y 
+                                        then None :: Option.map ((*) 2) x :: merge xs 
+                                        else x :: merge (y :: xs)
 
 let move = shift 4 << List.rev << merge << List.rev << shift 4
 
+let rec rotate board = match board with
+                        | [[];[];[];[]] -> []
+                        | _ -> (List.map List.head board) :: rotate (List.map List.tail board)
+
 let moveRight = List.map move
 let moveLeft = List.map <| (List.rev << move << List.rev)
+let moveDown = rotate << rotate << rotate << moveRight << rotate
+let moveUp = rotate << rotate << rotate << moveLeft << rotate
+
+
 
 [<EntryPoint>]
 let main argv = 
@@ -26,4 +36,7 @@ let main argv =
     ignore <| List.map (printfn "%A") (List.map move board)
     ignore <| List.map (printfn "%A") (moveLeft board)
     ignore <| List.map (printfn "%A") (moveRight board)
+    ignore <| List.map (printfn "%A") (moveUp board)
+    ignore <| List.map (printfn "%A") (moveDown board)
+    printfn "%A" <| rotate board
     0 // return an integer exit code
