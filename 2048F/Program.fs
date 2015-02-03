@@ -31,7 +31,7 @@ let optToString x
         | Some n -> sprintf "%-4i" n 
         | None -> "    "
 let rowformat = List.reduce (fun x y -> x+"|"+y) << List.map optToString
-let rowEmpty (n:int) (ns : int option list) 
+let rowEmpty (n) (ns : int option list)
     = List.mapi (fun i x -> match x with 
                               | None -> (n,Some i) 
                               | Some _ -> (n,None)) ns
@@ -42,9 +42,9 @@ let boardEmpty
 let rec replace n (m:int option) = List.mapi (fun i x -> if i=n 
                                                          then m 
                                                          else x)
-let newCell (t: int*int option)  
+let newCell (t: int*int option) k
     = List.mapi (fun i (x:int option list) -> if i = fst t 
-                                              then replace (snd t).Value (Some 2) x 
+                                              then replace (snd t).Value (Some k) x 
                                               else x) 
 let rec game board (rnum:System.Random)
     = do 
@@ -58,7 +58,8 @@ let rec game board (rnum:System.Random)
         System.Console.Clear()
         let movedBoard = dir board
         let nxcl = (boardEmpty movedBoard).[rnum.Next <| (boardEmpty movedBoard |> List.length)]
-        let newBoard = if board <> movedBoard || board = start then newCell nxcl movedBoard else board
+        let k = if (rnum.Next 2) = 0 then 2 else 4
+        let newBoard = if board <> movedBoard || board = start then newCell nxcl k movedBoard  else board
         ignore <| List.map (printfn "%s") (List.map rowformat movedBoard)
         Async.Sleep 10000 |> ignore
         System.Console.Clear()
