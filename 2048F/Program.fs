@@ -37,7 +37,7 @@ let moveDown = transpose << moveRight << transpose
 
 let cellFormat x
     = match x with 
-        | Some n -> sprintf "%-4i" n 
+        | Some n -> sprintf "-%4i" n 
         | None -> "    "
 
 let rowformat = List.reduce (fun x y -> x+"|"+y) << List.map cellFormat
@@ -70,7 +70,7 @@ let rec game board (rnum:System.Random) : unit
                     | 'j' -> moveDown
                     | 'k' -> moveUp
                     | 'l' -> moveRight
-                    | _ -> fun x -> x
+                    | _ -> id
         System.Console.Clear()
         let movedBoard = dir board
         let nxcl = (boardEmpty movedBoard).[rnum.Next <| (boardEmpty movedBoard |> List.length)]
