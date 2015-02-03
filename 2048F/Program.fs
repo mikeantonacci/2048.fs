@@ -37,7 +37,7 @@ let moveDown = transpose << moveRight << transpose
 
 let cellFormat x
     = match x with 
-        | Some n -> sprintf "-%4i" n 
+        | Some n -> sprintf "%-4i" n 
         | None -> "    "
 
 let rowformat = List.reduce (fun x y -> x+"|"+y) << List.map cellFormat
@@ -62,6 +62,8 @@ let newCell (t: int*int option) k
                                               then replace (snd t).Value (Some k) x 
                                               else x) 
 
+let win x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
+
 let rec game board (rnum:System.Random) : unit
     = do 
         let key = System.Console.ReadKey().KeyChar
@@ -73,6 +75,7 @@ let rec game board (rnum:System.Random) : unit
                     | _ -> id
         System.Console.Clear()
         let movedBoard = dir board
+        if ((boardEmpty movedBoard).Length = 0) then gameOver true
         let nxcl = (boardEmpty movedBoard).[rnum.Next <| (boardEmpty movedBoard |> List.length)]
         let k = if (rnum.Next 2) = 0 then 2 else 4
         let newBoard = if board <> movedBoard || board = start then newCell nxcl k movedBoard  else board
@@ -80,7 +83,21 @@ let rec game board (rnum:System.Random) : unit
         Async.Sleep 10000 |> ignore
         System.Console.Clear()
         ignore <| List.map (printfn "%s") (List.map rowformat newBoard)
+        if win newBoard then gameOver false
         game newBoard rnum
+
+and gameOver b 
+    = do 
+        System.Console.Clear()
+        System.Console.WriteLine(if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
+        let key = System.Console.ReadKey().KeyChar
+        let rnum = new System.Random()
+        let cont = match key with
+                     | 'y' -> game start rnum
+                     | 'n' -> System.Environment.Exit 0
+                     | _ -> gameOver true
+        ()
+
 
 [<EntryPoint>]
 let main argv = 
