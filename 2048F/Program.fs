@@ -59,6 +59,9 @@ let rec game board (rnum:System.Random)
         let movedBoard = dir board
         let nxcl = (boardEmpty movedBoard).[rnum.Next <| (boardEmpty movedBoard |> List.length)]
         let newBoard = if board <> movedBoard || board = start then newCell nxcl movedBoard else board
+        ignore <| List.map (printfn "%s") (List.map rowformat movedBoard)
+        Async.Sleep 10000 |> ignore
+        System.Console.Clear()
         ignore <| List.map (printfn "%s") (List.map rowformat newBoard)
         game newBoard rnum
         ()
