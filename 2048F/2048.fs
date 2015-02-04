@@ -102,7 +102,7 @@ let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
 let rec game board (rnum:System.Random) : unit
     = do 
-        if not <| hasNextMove board then gameOver <| true
+        if not <| hasNextMove board then rnum |> gameOver true
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
         let movedBoard = key |> moveDir <| board
@@ -116,19 +116,18 @@ let rec game board (rnum:System.Random) : unit
         Async.Sleep 10000 |> ignore
         System.Console.Clear()
         List.iter (printfn "%s") (List.map rowformat newBoard.Value)
-        if isWin newBoard.Value then gameOver <| false
+        if isWin newBoard.Value then rnum |> gameOver false
         game newBoard.Value rnum
 
-and gameOver b 
+and gameOver b (rnum:System.Random) : unit
     = do 
         //System.Console.Clear()
         System.Console.WriteLine(if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
         let key = System.Console.ReadKey().KeyChar
-        let rnum = new System.Random()
         let cont = match key with
                      | 'y' -> game start rnum
                      | 'n' -> System.Environment.Exit 0
-                     | _ -> gameOver true
+                     | _ -> rnum |> gameOver true
         ()
 
 
