@@ -47,8 +47,8 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.fsi" />
-    <Compile Include="Program.fs" />
+    <Compile Include="2048.fsi" />
+    <Compile Include="2048.fs" />
     <None Include="App.config" />
   </ItemGroup>
   <PropertyGroup>
