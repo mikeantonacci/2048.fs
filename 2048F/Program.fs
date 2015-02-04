@@ -77,7 +77,7 @@ let rec game board (rnum:System.Random) : unit
         let movedBoard = dir board
         if ((boardEmpty movedBoard).Length = 0) then gameOver true
         let nxcl = (boardEmpty movedBoard).[rnum.Next <| (boardEmpty movedBoard |> List.length)]
-        let k = if (rnum.Next 2) = 0 then 2 else 4
+        let k = if (rnum.Next 9) = 0 then 4 else 2
         let newBoard = if board <> movedBoard || board = start then newCell nxcl k movedBoard  else board
         ignore <| List.map (printfn "%s") (List.map rowformat movedBoard)
         Async.Sleep 10000 |> ignore
