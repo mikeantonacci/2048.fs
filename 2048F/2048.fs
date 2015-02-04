@@ -4,12 +4,8 @@ type cell = int option
 type row = cell list
 type board = row list
 
-let start : board = [[None;None;None;None];
-                     [None;None;None;None];
-                     [None;None;None;None];
-                     [None;None;None;None];]
 let SIZE : int = 4
-
+let start : board = List.init SIZE (fun x -> List.init SIZE (fun y -> None))
 
 let nthOrNone (l : 'a list) n = if n < l.Length then Some (List.nth l n) else None
 
@@ -106,7 +102,6 @@ let rec game board (rnum:System.Random) : unit
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
         let movedBoard = key |> moveDir <| board
-        //if ((boardEmpty movedBoard).Length = 0) then gameOver <| true
         let k = if (rnum.Next 9) = 0 then 4 else 2
         let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
         let newBoard = if board <> movedBoard || board = start
@@ -121,9 +116,9 @@ let rec game board (rnum:System.Random) : unit
 
 and gameOver b (rnum:System.Random) : unit
     = do 
-        //System.Console.Clear()
         System.Console.WriteLine(if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
         let key = System.Console.ReadKey().KeyChar
+        System.Console.Clear()
         let cont = match key with
                      | 'y' -> game start rnum
                      | 'n' -> System.Environment.Exit 0
