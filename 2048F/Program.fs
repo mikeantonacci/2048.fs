@@ -10,10 +10,15 @@ let start : board = [[None;None;None;None];
                      [None;None;None;None];]
 let SIZE : int = 4
 
+
+let nthOrNone (l : 'a list) n = if n < l.Length then Some (List.nth l n) else None
+
+let pure' a = Some a
 let ap (f : ('a -> 'b) option) (x : 'a option) : 'b option
     = match f with 
         | Some _ -> match x with | Some _ -> Option.map f.Value x | None -> None
         | None -> None
+let (<*>) = ap
 
 let rec pad n xs = if List.length xs = n 
                    then xs 
@@ -72,37 +77,51 @@ let replace n (m : cell)
                             then m 
                             else x)
 
-let newCell (t: int*cell) k
+let newCell k (t: int*cell) 
     = List.mapi (fun i (x:int option list) -> if i = fst t 
                                               then replace (snd t).Value (Some k) x 
                                               else x) 
 
+let newCellCoord r b
+    = nthOrNone (boardEmpty b) r
+
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
-let newCellCoord r b
-    = List.nth (boardEmpty b) r
+
+//if board is full and row contains no possible merges and trasposed rows contain no possible merges, game over
+let boardFull : (board -> bool)
+    = List.isEmpty << boardEmpty
+let rec rowHasMerges (row : row) : bool  
+    = match row with
+        | [] -> false
+        | [x] -> false
+        | (x :: y :: xs) -> if x = y then true else rowHasMerges (y::xs)
+let rec boardHasMerges b 
+    = List.exists (fun x -> x=true) (((List.map rowHasMerges) <| b) @ (List.map rowHasMerges) (transpose b))
+let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
 let rec game board (rnum:System.Random) : unit
     = do 
+        if not <| hasNextMove board then gameOver <| true
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
         let movedBoard = key |> moveDir <| board
-        if ((boardEmpty movedBoard).Length = 0) then gameOver <| true
+        //if ((boardEmpty movedBoard).Length = 0) then gameOver <| true
         let k = if (rnum.Next 9) = 0 then 4 else 2
         let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
         let newBoard = if board <> movedBoard || board = start
-                       then i |> newCellCoord <| movedBoard |> newCell <| k <| movedBoard
-                       else board
+                       then (newCell k) |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
+                       else pure' board
         List.iter (printfn "%s") (List.map rowformat movedBoard)
         Async.Sleep 10000 |> ignore
         System.Console.Clear()
-        List.iter (printfn "%s") (List.map rowformat newBoard)
-        if isWin newBoard then gameOver <| false
-        game newBoard rnum
+        List.iter (printfn "%s") (List.map rowformat newBoard.Value)
+        if isWin newBoard.Value then gameOver <| false
+        game newBoard.Value rnum
 
 and gameOver b 
     = do 
-        System.Console.Clear()
+        //System.Console.Clear()
         System.Console.WriteLine(if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
         let key = System.Console.ReadKey().KeyChar
         let rnum = new System.Random()
