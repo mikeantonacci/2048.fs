@@ -5,10 +5,9 @@ type row = cell list
 type board = row list
 
 
-
-
 let SIZE : int = 4
-let start : board = List.init SIZE (fun x -> List.init SIZE (fun y -> None))
+let start : board 
+    = List.init SIZE (fun x -> List.init SIZE (fun y -> None))
 
 let nthOrNone (l : 'a list) n = if n < l.Length then Some (List.nth l n) else None
 
@@ -86,7 +85,6 @@ let newCellCoord r b
 
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
-
 //if board is full and row contains no possible merges and trasposed rows contain no possible merges, game over
 let boardFull : (board -> bool)
     = List.isEmpty << boardEmpty
@@ -119,7 +117,7 @@ let rec game board (rnum:System.Random) : unit
                        else pure' board
         //List.iter (printfn "%s") (List.map rowformat movedBoard)
         showBoard movedBoard
-        Async.Sleep 10000 |> ignore
+        Async.Sleep 15000 |> ignore
         System.Console.Clear()
         //List.iter (printfn "%s") (List.map rowformat newBoard.Value)
         Option.iter showBoard newBoard
@@ -128,7 +126,7 @@ let rec game board (rnum:System.Random) : unit
 
 and gameOver b (rnum:System.Random) : unit
     = do 
-        System.Console.WriteLine(if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
+        printfn "%s" (if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
         let cont = match key with
