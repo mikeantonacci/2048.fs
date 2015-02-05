@@ -13,7 +13,7 @@ val ap : ('a -> 'b) option -> 'a option -> 'b option
 val (<*>) : (('a -> 'b) option -> 'a option -> 'b option)
 
 val pad : int -> 'a option list -> 'a option list
-val shift : int -> (row -> row)
+val shift : (row -> row)
 val merge : row -> row
 
 val move : (row -> row)
