@@ -110,23 +110,21 @@ let rec game board (rnum:System.Random) : unit
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
         let movedBoard = key |> moveDir <| board
-        let k = if (rnum.Next 9) = 0 then 4 else 2
+        let k = if rnum.Next 9 = 0 then 4 else 2
         let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
         let newBoard = if board <> movedBoard || board = start
-                       then (newCell k) |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
+                       then newCell k |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
                        else pure' board
-        //List.iter (printfn "%s") (List.map rowformat movedBoard)
         showBoard movedBoard
         Async.Sleep 15000 |> ignore
         System.Console.Clear()
-        //List.iter (printfn "%s") (List.map rowformat newBoard.Value)
         Option.iter showBoard newBoard
         if isWin newBoard.Value then rnum |> gameOver false
         game newBoard.Value rnum
 
 and gameOver b (rnum:System.Random) : unit
     = do 
-        printfn "%s" (if b then "Game Over.  Play Again? (y/n)" else "2048! Play Again? (y/n)")
+        printfn "%s" (if b then "Game Over. Play Again? (y/n)" else "2048! Play Again? (y/n)")
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
         let cont = match key with
