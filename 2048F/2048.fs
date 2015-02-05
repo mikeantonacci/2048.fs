@@ -20,18 +20,18 @@ let rec pad n xs = if List.length xs = n
                    then xs 
                    else pad n (None::xs)
 
-let shift n = pad n << List.filter (fun (x: int option) -> x <> None) 
+let shift  = List.filter (fun (x: int option) -> x <> None) 
 
 let rec merge a 
     = match a with
         | [] -> []
         | [x] -> [x]
         | (x :: y :: xs) -> if x = y 
-                            then None :: Option.map ((*) 2) x :: merge xs 
+                            then Option.map ((*) 2) x :: merge xs 
                             else x :: merge (y :: xs)
 
 let move : row -> row 
-    = (shift <| SIZE) << List.rev << merge << List.rev << (SIZE |> shift)
+    = pad SIZE << List.rev << merge << List.rev << shift
 
 let rec transpose board : board
     = match board with
