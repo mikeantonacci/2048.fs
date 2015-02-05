@@ -42,6 +42,7 @@ val boardFull : (board -> bool)
 val rowHasMerges : row -> bool
 val boardHasMerges : board -> bool
 val hasNextMove : board -> bool
+val showBoard : (board -> unit)
 
 val game : board -> System.Random -> unit
 val gameOver : bool -> System.Random -> unit
