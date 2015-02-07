@@ -18,12 +18,14 @@ let ap (f : ('a -> 'b) option) (x : 'a option) : 'b option
                               | None -> None
         | None -> None
 let (<*>) = ap
+let flip f x y = f y x
+let (>>=) = flip Option.bind
 
 let rec pad n xs = if List.length xs = n 
                    then xs 
                    else pad n (None::xs)
 
-let shift  = List.filter (fun (x: int option) -> x <> None) 
+let shift  = List.filter Option.isSome 
 
 let rec merge a 
     = match a with
@@ -84,6 +86,18 @@ let newCell k (t: int*cell)
 let newCellCoord r b
     = nthOrNone (boardEmpty b) r
 
+let optionNewBoard board movedBoard i k
+    = if board <> movedBoard || board = start
+      then newCell (pure' k) |> Option.map <| (newCellCoord i movedBoard) <*> pure' movedBoard
+      else pure' <| List.map pure' board
+let newBoard board nextBoard : board option 
+    = match nextBoard with
+                        | Some _ -> if List.fold (fun x a -> x && Option.isSome a) true (Option.get nextBoard)
+                                    then pure' <| List.map Option.get nextBoard.Value
+                                    else pure' board
+                        | None -> None
+
+
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
 
@@ -106,37 +120,36 @@ let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 let showBoard : (board -> unit)
     = printfn <| "%s" |> List.iter << List.map rowformat
 
-let rec game board (rnum:System.Random) : unit
+let insertAtRandom r board movedBoard
+    =   let value = if r 9 = 0 then 4 else 2
+        let space = r <| (boardEmpty movedBoard |> List.length)
+        let nextBoard  = optionNewBoard board movedBoard space value
+        let nb = newBoard board nextBoard
+        nb
+
+let rec game (rnum:System.Random) board : unit
     = do 
         if not <| hasNextMove board then rnum |> gameOver true
-        let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
+        showBoard board
+        let key = System.Console.ReadKey().KeyChar
         let movedBoard = key |> moveDir <| board
-        let k = if rnum.Next 9 = 0 then 4 else 2
-        let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
-        let optionNewBoard = if board <> movedBoard || board = start
-                             then newCell (pure' k) |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
-                             else pure' <| (List.map <|| (pure', board))
-        let newBoard : board option 
-            = match optionNewBoard with
-                                    | Some _ -> if List.fold (fun x a -> x && Option.isSome a) true (Option.get optionNewBoard)
-                                                then pure' <| List.map Option.get optionNewBoard.Value
-                                                else pure' board
-                                    | None -> None
+        let nb = insertAtRandom rnum.Next board movedBoard
         showBoard movedBoard
         Async.Sleep 15000 |> ignore
         System.Console.Clear()
-        Option.iter showBoard newBoard
-        if isWin newBoard.Value then rnum |> gameOver false
-        game newBoard.Value rnum
+        Option.iter showBoard nb
+        if isWin <| Option.get nb then rnum |> gameOver false
+        game rnum (Option.get nb) 
 
 and gameOver b (rnum:System.Random) : unit
     = do 
         printfn "%s" (if b then "Game Over. Play Again? (y/n)" else "2048! Play Again? (y/n)")
         let key = System.Console.ReadKey().KeyChar
         System.Console.Clear()
+        let initialInsert = insertAtRandom rnum.Next start
         let cont = match key with
-                     | 'y' -> game start rnum
+                     | 'y' -> initialInsert start >>= initialInsert |> (Option.map <| game rnum) |> ignore
                      | 'n' -> System.Environment.Exit 0
                      | _ -> rnum |> gameOver true
         ()
@@ -144,6 +157,9 @@ and gameOver b (rnum:System.Random) : unit
 
 [<EntryPoint>]
 let main argv = 
+    printfn "%s" "Hit any key to start."
+    System.Console.ReadKey() |> ignore
     let rnum = new System.Random()
-    game start rnum    
+    let initialInsert = insertAtRandom rnum.Next start
+    initialInsert start >>= initialInsert |> (Option.map <| game rnum) |> ignore
     0 // return an integer exit code

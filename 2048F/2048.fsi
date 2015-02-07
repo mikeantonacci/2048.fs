@@ -43,6 +43,6 @@ val boardHasMerges : board -> bool
 val hasNextMove : board -> bool
 val showBoard : (board -> unit)
 
-val game : board -> System.Random -> unit
+val game : System.Random -> board -> unit
 val gameOver : bool -> System.Random -> unit
 val main : string[] -> int
