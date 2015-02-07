@@ -32,9 +32,8 @@ val rowformat : (row -> string)
 val rowEmpty : int -> row -> (int*cell) list
 val boardEmpty : (board -> (int*cell) list)
 
-val replace : int -> cell -> (row -> row)
-val newCell : int -> (int * cell) -> (board -> board)
-val newCellCoord : int -> board -> (int*cell) option
+val replace : 'a -> int -> ('a list -> 'a list)
+val newCell : int option -> (int * cell) -> (board -> row option list)
 
 val isWin : board -> bool
 

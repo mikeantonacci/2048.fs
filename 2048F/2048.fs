@@ -28,7 +28,7 @@ let rec merge a
         | [] -> []
         | [x] -> [x]
         | (x :: y :: xs) -> if x = y 
-                            then Option.map ((*) 2) x :: merge xs 
+                            then (Option.map (+) x <*> y) :: merge xs 
                             else x :: merge (y :: xs)
 
 let move : row -> row 
@@ -69,15 +69,15 @@ let boardEmpty
                                                                      | (_, Some _) -> true 
                                                                      | _ -> false)
 
-let replace n (m : cell)
+let replace m n
     = List.mapi (fun i x -> if i=n 
                             then m 
                             else x)
 
 let newCell k (t: int*cell) 
     = List.mapi (fun i (x:int option list) -> if i = fst t 
-                                              then replace (snd t).Value (Some k) x 
-                                              else x) 
+                                              then Option.map replace <| Some k <*> snd t <*> pure' x 
+                                              else pure' x) 
 
 let newCellCoord r b
     = nthOrNone (boardEmpty b) r
@@ -112,9 +112,15 @@ let rec game board (rnum:System.Random) : unit
         let movedBoard = key |> moveDir <| board
         let k = if rnum.Next 9 = 0 then 4 else 2
         let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
-        let newBoard = if board <> movedBoard || board = start
-                       then newCell k |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
-                       else pure' board
+        let optionNewBoard = if board <> movedBoard || board = start
+                             then newCell (pure' k) |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
+                             else pure' <| (List.map <|| (pure', board))
+        let newBoard : board option 
+            = match optionNewBoard with
+                                    | Some _ -> if List.fold (fun x a -> x && Option.isSome a) true (Option.get optionNewBoard)
+                                                then pure' <| List.map Option.get optionNewBoard.Value
+                                                else pure' board
+                                    | None -> None
         showBoard movedBoard
         Async.Sleep 15000 |> ignore
         System.Console.Clear()
