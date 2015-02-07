@@ -1,5 +1,7 @@
 ﻿module _2048
 
+open System
+
 type cell = int option
 type row = cell list
 type board = row list
@@ -18,6 +20,7 @@ let ap (f : ('a -> 'b) option) (x : 'a option) : 'b option
 let (<*>) = ap
 let flip f x y = f y x
 let (>>=) = flip Option.bind
+let concat = id |> Option.bind
 
 let rec pad n xs = if List.length xs = n 
                    then xs 
@@ -82,7 +85,7 @@ let newCell k (t: int*int)
                                                else x)
 
 let newCellCoord r b
-    = (nthOrNone (boardEmpty b) r) >>= id
+    = concat <| nthOrNone (boardEmpty b) r
 
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
@@ -102,42 +105,52 @@ let rec boardHasMerges b
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
+let insertNewCell rnum board movedBoard
+    = let value = if rnum 9 = 0 then 4 else 2
+      let emptyCell = rnum <| (boardEmpty movedBoard |> List.length)
+      if board <> movedBoard || board = start
+      then Option.map (newCell value) (emptyCell |> newCellCoord <| movedBoard) <*> pure' movedBoard
+      else pure' board
+
 //IO
 let showBoard : (board -> unit)
     = printfn <| "%s" |> List.iter << List.map rowformat
 
-let rec game board (rnum:System.Random) : unit
+let initialInsert rand = insertNewCell rand start
+
+let rec game (rnum : Random) board : unit
     = do 
-        if not <| hasNextMove board then rnum |> gameOver true
-        let key = System.Console.ReadKey().KeyChar
-        System.Console.Clear()
+        if not <| hasNextMove board then rnum |> gameOver <| true
+        Console.Clear()
+        showBoard board
+        let key = Console.ReadKey().KeyChar
         let movedBoard = key |> moveDir <| board
-        let k = if rnum.Next 9 = 0 then 4 else 2
-        let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
-        let newBoard = if board <> movedBoard || board = start
-                       then Option.map (newCell k) (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
-                       else pure' board
+        let newBoard = insertNewCell rnum.Next board movedBoard
+        Console.Clear()
         showBoard movedBoard
         Async.Sleep 15000 |> ignore
-        System.Console.Clear()
+        Console.Clear()
         Option.iter showBoard newBoard
-        if isWin newBoard.Value then rnum |> gameOver false
-        game newBoard.Value rnum
+        if isWin <| newBoard.Value then rnum |> gameOver <| false
+        game rnum newBoard.Value
 
-and gameOver b (rnum:System.Random) : unit
+and gameOver (rnum : Random) (b : bool) : unit
     = do 
         printfn "%s" (if b then "Game Over. Play Again? (y/n)" else "2048! Play Again? (y/n)")
-        let key = System.Console.ReadKey().KeyChar
-        System.Console.Clear()
+        let key = Console.ReadKey().KeyChar
+        Console.Clear()
         let cont = match key with
-                     | 'y' -> game start rnum
-                     | 'n' -> System.Environment.Exit 0
-                     | _ -> rnum |> gameOver true
+                     | 'y' -> initialInsert rnum.Next start >>= initialInsert rnum.Next |> (Option.map <| game rnum) |> ignore
+                     | 'n' -> Environment.Exit 0
+                     | _ -> gameOver rnum true
         ()
 
 
 [<EntryPoint>]
 let main argv = 
-    let rnum = new System.Random()
-    game start rnum    
+    printfn "%s" "Press any key to play."
+    Console.ReadKey() |> ignore
+    let rnum = new Random()
+    initialInsert rnum.Next start >>= initialInsert rnum.Next |> (Option.map <| game rnum) |> ignore
+    game rnum start
     0 // return an integer exit code
