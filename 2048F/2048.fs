@@ -13,7 +13,9 @@ let nthOrNone (l : 'a list) n = if n < l.Length then Some (List.nth l n) else No
 let pure' a = Some a
 let ap (f : ('a -> 'b) option) (x : 'a option) : 'b option
     = match f with 
-        | Some _ -> match x with | Some _ -> Option.map f.Value x | None -> None
+        | Some _ -> match x with 
+                              | Some _ -> Option.map f.Value x 
+                              | None -> None
         | None -> None
 let (<*>) = ap
 
