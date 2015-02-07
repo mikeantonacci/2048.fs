@@ -68,7 +68,7 @@ let rowEmpty (n:int) (ns : row)
                               | None -> (n,Some i) 
                               | Some _ -> (n,None)) ns
 
-let boardEmpty
+let getEmptyCells
     = (List.concat << List.mapi rowEmpty) >> List.filter (fun x -> match x with 
                                                                      | (_, Some _) -> true 
                                                                      | _ -> false)
@@ -78,17 +78,17 @@ let replace m n
                             then m 
                             else x)
 
-let newCell k (t: int*cell) 
+let insertNewCell k (t: int*cell) 
     = List.mapi (fun i (x:int option list) -> if i = fst t 
                                               then Option.map replace <| Some k <*> snd t <*> pure' x 
                                               else pure' x) 
 
 let newCellCoord r b
-    = nthOrNone (boardEmpty b) r
+    = nthOrNone (getEmptyCells b) r
 
 let optionNewBoard board movedBoard i k
     = if board <> movedBoard || board = start
-      then newCell (pure' k) |> Option.map <| (newCellCoord i movedBoard) <*> pure' movedBoard
+      then insertNewCell (pure' k) |> Option.map <| (newCellCoord i movedBoard) <*> pure' movedBoard
       else pure' <| List.map pure' board
 let newBoard board nextBoard : board option 
     = match nextBoard with
@@ -100,10 +100,8 @@ let newBoard board nextBoard : board option
 
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
-
-//if board is full and row contains no possible merges and trasposed rows contain no possible merges, game over
 let boardFull : (board -> bool)
-    = List.isEmpty << boardEmpty
+    = List.isEmpty << getEmptyCells
 
 let rec rowHasMerges (row : row) : bool  
     = match row with
@@ -116,13 +114,12 @@ let rec boardHasMerges b
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
-//IO
 let showBoard : (board -> unit)
     = printfn <| "%s" |> List.iter << List.map rowformat
 
 let insertAtRandom r board movedBoard
     =   let value = if r 9 = 0 then 4 else 2
-        let space = r <| (boardEmpty movedBoard |> List.length)
+        let space = r <| (getEmptyCells movedBoard |> List.length)
         let nextBoard  = optionNewBoard board movedBoard space value
         let nb = newBoard board nextBoard
         nb
