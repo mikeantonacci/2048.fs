@@ -26,7 +26,7 @@ let rec pad n xs = if List.length xs = n
                    then xs 
                    else pad n (None::xs)
 
-let shift  = List.filter (fun (x: int option) -> x <> None) 
+let shift  = List.filter Option.isSome
 
 let rec merge a 
     = match a with
