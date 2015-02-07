@@ -1,5 +1,7 @@
 ﻿module _2048
 
+open System
+
 type cell = int option
 type row = cell list
 type board = row list
@@ -17,15 +19,17 @@ let ap (f : ('a -> 'b) option) (x : 'a option) : 'b option
                               | Some _ -> Option.map f.Value x 
                               | None -> None
         | None -> None
+
 let (<*>) = ap
 let flip f x y = f y x
 let (>>=) = flip Option.bind
+let concat = id |> Option.bind
 
 let rec pad n xs = if List.length xs = n 
                    then xs 
                    else pad n (None::xs)
 
-let shift  = List.filter Option.isSome 
+let shift  = List.filter Option.isSome
 
 let rec merge a 
     = match a with
@@ -65,43 +69,31 @@ let rowformat = List.map cellFormat >> List.reduce (fun x y -> x+"|"+y)
 
 let rowEmpty (n:int) (ns : row)
     = List.mapi (fun i x -> match x with 
-                              | None -> (n,Some i) 
-                              | Some _ -> (n,None)) ns
+                              | None -> Some (n, i) 
+                              | Some _ -> None) ns
 
-let getEmptyCells
+let boardEmpty
     = (List.concat << List.mapi rowEmpty) >> List.filter (fun x -> match x with 
-                                                                     | (_, Some _) -> true 
-                                                                     | _ -> false)
+                                                                     | Some _ -> true 
+                                                                     | None -> false)
 
-let replace m n
+let replace n (m : cell)
     = List.mapi (fun i x -> if i=n 
                             then m 
                             else x)
 
-let insertNewCell k (t: int*cell) 
+let insertNewCell k (t: int*int) 
     = List.mapi (fun i (x:int option list) -> if i = fst t 
-                                              then Option.map replace <| Some k <*> snd t <*> pure' x 
-                                              else pure' x) 
+                                               then replace (snd t) (Some k) x 
+                                               else x)
 
 let newCellCoord r b
-    = nthOrNone (getEmptyCells b) r
-
-let optionNewBoard board movedBoard i k
-    = if board <> movedBoard || board = start
-      then insertNewCell (pure' k) |> Option.map <| (newCellCoord i movedBoard) <*> pure' movedBoard
-      else pure' <| List.map pure' board
-let newBoard board nextBoard : board option 
-    = match nextBoard with
-                        | Some _ -> if List.fold (fun x a -> x && Option.isSome a) true (Option.get nextBoard)
-                                    then pure' <| List.map Option.get nextBoard.Value
-                                    else pure' board
-                        | None -> None
-
+    = concat <| nthOrNone (boardEmpty b) r
 
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
 let boardFull : (board -> bool)
-    = List.isEmpty << getEmptyCells
+    = List.isEmpty << boardEmpty
 
 let rec rowHasMerges (row : row) : bool  
     = match row with
@@ -114,49 +106,51 @@ let rec boardHasMerges b
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
+let insertAtRandom rnum board movedBoard
+    = let value = if rnum 9 = 0 then 4 else 2
+      let emptyCell = rnum <| (boardEmpty movedBoard |> List.length)
+      if board <> movedBoard || board = start
+      then Option.map (insertNewCell value) (emptyCell |> newCellCoord <| movedBoard) <*> pure' movedBoard
+      else pure' board
+
 let showBoard : (board -> unit)
     = printfn <| "%s" |> List.iter << List.map rowformat
 
-let insertAtRandom r board movedBoard
-    =   let value = if r 9 = 0 then 4 else 2
-        let space = r <| (getEmptyCells movedBoard |> List.length)
-        let nextBoard  = optionNewBoard board movedBoard space value
-        let nb = newBoard board nextBoard
-        nb
+let initialInsert rand = insertAtRandom rand start
 
-let rec game (rnum:System.Random) board : unit
+let rec game (rnum : Random) board : unit
     = do 
-        if not <| hasNextMove board then rnum |> gameOver true
-        System.Console.Clear()
+        if not <| hasNextMove board then rnum |> gameOver <| true
+        Console.Clear()
         showBoard board
-        let key = System.Console.ReadKey().KeyChar
+        let key = Console.ReadKey().KeyChar
         let movedBoard = key |> moveDir <| board
-        let nb = insertAtRandom rnum.Next board movedBoard
+        let newBoard = insertAtRandom rnum.Next board movedBoard
+        Console.Clear()
         showBoard movedBoard
         Async.Sleep 15000 |> ignore
-        System.Console.Clear()
-        Option.iter showBoard nb
-        if isWin <| Option.get nb then rnum |> gameOver false
-        game rnum (Option.get nb) 
+        Console.Clear()
+        Option.iter showBoard newBoard
+        if isWin <| Option.get newBoard then rnum |> gameOver <| false
+        game rnum <| Option.get newBoard
 
-and gameOver b (rnum:System.Random) : unit
+and gameOver (rnum : Random) (b : bool) : unit
     = do 
         printfn "%s" (if b then "Game Over. Play Again? (y/n)" else "2048! Play Again? (y/n)")
-        let key = System.Console.ReadKey().KeyChar
-        System.Console.Clear()
-        let initialInsert = insertAtRandom rnum.Next start
+        let key = Console.ReadKey().KeyChar
+        Console.Clear()
         let cont = match key with
-                     | 'y' -> initialInsert start >>= initialInsert |> (Option.map <| game rnum) |> ignore
-                     | 'n' -> System.Environment.Exit 0
-                     | _ -> rnum |> gameOver true
+                     | 'y' -> initialInsert rnum.Next start >>= initialInsert rnum.Next |> (Option.map <| game rnum) |> ignore
+                     | 'n' -> Environment.Exit 0
+                     | _ -> gameOver rnum true
         ()
 
 
 [<EntryPoint>]
 let main argv = 
-    printfn "%s" "Hit any key to start."
-    System.Console.ReadKey() |> ignore
-    let rnum = new System.Random()
-    let initialInsert = insertAtRandom rnum.Next start
-    initialInsert start >>= initialInsert |> (Option.map <| game rnum) |> ignore
+    printfn "%s" "Press any key to play."
+    Console.ReadKey() |> ignore
+    let rnum = new Random()
+    initialInsert rnum.Next start >>= initialInsert rnum.Next |> (Option.map <| game rnum) |> ignore
+    game rnum start
     0 // return an integer exit code
