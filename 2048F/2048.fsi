@@ -29,12 +29,12 @@ val moveDir : char -> (board -> board)
 val cellFormat : cell -> string
 val rowformat : (row -> string)
 
-val rowEmpty : int -> row -> (int*cell) list
-val boardEmpty : (board -> (int*cell) list)
+val rowEmpty : int -> row -> (int*int) option list
+val boardEmpty : (board -> (int*int) option list)
 
 val replace : int -> cell -> (row -> row)
-val newCell : int -> (int * cell) -> (board -> board)
-val newCellCoord : int -> board -> (int*cell) option
+val newCell : int -> (int * int) -> (board -> board)
+val newCellCoord : int -> board -> (int*int) option
 
 val isWin : board -> bool
 

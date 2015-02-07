@@ -16,6 +16,8 @@ let ap (f : ('a -> 'b) option) (x : 'a option) : 'b option
         | Some _ -> match x with | Some _ -> Option.map f.Value x | None -> None
         | None -> None
 let (<*>) = ap
+let flip f x y = f y x
+let (>>=) = flip Option.bind
 
 let rec pad n xs = if List.length xs = n 
                    then xs 
@@ -61,26 +63,26 @@ let rowformat = List.map cellFormat >> List.reduce (fun x y -> x+"|"+y)
 
 let rowEmpty (n:int) (ns : row)
     = List.mapi (fun i x -> match x with 
-                              | None -> (n,Some i) 
-                              | Some _ -> (n,None)) ns
+                              | None -> Some (n, i) 
+                              | Some _ -> None) ns
 
 let boardEmpty
     = (List.concat << List.mapi rowEmpty) >> List.filter (fun x -> match x with 
-                                                                     | (_, Some _) -> true 
-                                                                     | _ -> false)
+                                                                     | Some _ -> true 
+                                                                     | None -> false)
 
 let replace n (m : cell)
     = List.mapi (fun i x -> if i=n 
                             then m 
                             else x)
 
-let newCell k (t: int*cell) 
+let newCell k (t: int*int) 
     = List.mapi (fun i (x:int option list) -> if i = fst t 
-                                              then replace (snd t).Value (Some k) x 
-                                              else x) 
+                                               then replace (snd t) (Some k) x 
+                                               else x)
 
 let newCellCoord r b
-    = nthOrNone (boardEmpty b) r
+    = (nthOrNone (boardEmpty b) r) >>= id
 
 let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
@@ -113,7 +115,7 @@ let rec game board (rnum:System.Random) : unit
         let k = if rnum.Next 9 = 0 then 4 else 2
         let i = rnum.Next <| (boardEmpty movedBoard |> List.length)
         let newBoard = if board <> movedBoard || board = start
-                       then newCell k |> Option.map <| (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
+                       then Option.map (newCell k) (i |> newCellCoord <| movedBoard) <*> pure' movedBoard
                        else pure' board
         showBoard movedBoard
         Async.Sleep 15000 |> ignore
