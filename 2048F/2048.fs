@@ -20,20 +20,20 @@ let rec pad n xs = if List.length xs = n
 
 let shift  = List.filter Option.isSome
 
-let rec merge a 
-    = match a with
+let rec merge f xs
+    = match xs with
         | [] -> []
         | [x] -> [x]
         | (x :: y :: xs) -> if x = y 
-                            then ((+) <!> x <*> y) :: merge xs 
-                            else x :: merge (y :: xs)
+                            then (f <!> x <*> y) :: merge f xs
+                            else x :: merge f (y :: xs)
 
 let move : row -> row 
-    = pad SIZE << List.rev << merge << List.rev << shift
+    = pad SIZE << List.rev << merge (+) << List.rev << shift
 
 let rec transpose board : board
     = match board with
-        | [[];[];[];[]] -> []
+        | xs when List.concat xs = [] -> []
         | _ -> List.map List.head board :: transpose (List.map List.tail board)
 
 let moveRight = move |> List.map
