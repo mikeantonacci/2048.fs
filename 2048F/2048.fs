@@ -91,7 +91,8 @@ let rec rowHasMerges (row : row) : bool
         | (x :: y :: xs) -> if x = y then true else rowHasMerges (y::xs)
 
 let rec boardHasMerges b 
-    = List.exists (fun x -> x=true) (((List.map rowHasMerges) <| b) @ (List.map rowHasMerges) (transpose b))
+    = List.exists ((=) true) (List.map rowHasMerges <| b) 
+    || List.exists ((=) true) (List.map rowHasMerges <| transpose b)
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
@@ -105,34 +106,36 @@ let insertAtRandom (rnum : Random) board movedBoard
 let showBoard : (board -> unit)
     = printfn <| "%s" |> List.iter << List.map rowformat
 
-let initialInsert rand : (board -> board option) = insertAtRandom rand start
+let initInsert rand : (board -> board option) = insertAtRandom rand start
+
 let rec game (rnum : Random) board : unit
-    = do 
-        if not <| hasNextMove board then rnum |> gameOver <| true
-        Console.Clear()
-        showBoard board
-        let key = Console.ReadKey().KeyChar
-        let movedBoard = moveDir key board
-        let newBoard = insertAtRandom rnum board movedBoard
-        Console.Clear()
-        showBoard movedBoard
-        Async.Sleep 15000 |> ignore
-        Console.Clear()
-        Option.iter showBoard newBoard
-        if isWin <!> newBoard |> getOrElse false then rnum |> gameOver <| false
-        game rnum <!> newBoard |> ignore
+    = if not <| hasNextMove board then rnum |> gameOver <| true
+      Console.Clear()
+      showBoard board
+      let key = Console.ReadKey().KeyChar
+      let movedBoard = moveDir key board
+      let newBoard = insertAtRandom rnum board movedBoard
+      Console.Clear()
+      showBoard movedBoard
+      Async.Sleep 15000 |> ignore
+      Console.Clear()
+      Option.iter showBoard newBoard
+      if isWin <!> newBoard |> getOrElse false 
+      then rnum |> gameOver <| false
+      game rnum <!> newBoard |> ignore
         
 
-and gameOver (rnum : Random) (b : bool) : unit
-    = do 
-        printfn "%s" (if b then "Game Over. Play Again? (y/n)" else "2048! Play Again? (y/n)")
-        let key = Console.ReadKey().KeyChar
-        Console.Clear()
-        let cont = match key with
-                     | 'y' -> game rnum <!> (initialInsert rnum >=> initialInsert rnum <| start) |> ignore
-                     | 'n' -> Environment.Exit 0
-                     | _ -> gameOver rnum true
-        ()
+and gameOver (rand : Random) (b : bool) : unit
+    = printfn "%s" (if b 
+                    then "Game Over. Play Again? (y/n)" 
+                    else "2048! Play Again? (y/n)")
+      let key = Console.ReadKey().KeyChar
+      Console.Clear()
+      let cont = match key with
+                   | 'y' -> game rand <!> (initInsert rand >=> initInsert rand <| start) |> ignore
+                   | 'n' -> Environment.Exit 0
+                   | _ -> gameOver rand true
+      ()
 
 
 [<EntryPoint>]
@@ -140,6 +143,5 @@ let main argv =
     printfn "%s" "Press any key to play."
     Console.ReadKey() |> ignore
     let rnum = new Random()
-    game rnum <!> (initialInsert rnum >=> initialInsert rnum <| start) |> ignore
-    game rnum start
+    game rnum <!> (initInsert rnum >=> initInsert rnum <| start) |> ignore
     0 // return an integer exit code
