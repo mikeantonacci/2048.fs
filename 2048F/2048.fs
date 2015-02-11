@@ -4,13 +4,13 @@ open System
 open FSharpx.Prelude
 open FSharpx.Option
 
-type cell = int option
-type row = cell list
-type board = row list
+type 'a cell = 'a option
+type 'a row = 'a cell list
+type 'a board = 'a row list
 
 let SIZE : int = 4
-let start : board 
-    = List.init SIZE (fun x -> List.init SIZE (fun y -> None))
+let start<'a>
+    = List.init SIZE (fun x -> List.init SIZE (fun y -> Option<'a>.None))
 
 let nthOrNone (l : 'a list) n = if n < l.Length then Some (List.nth l n) else None
 
@@ -18,7 +18,7 @@ let rec pad n xs = if List.length xs = n
                    then xs 
                    else pad n (None::xs)
 
-let shift  = List.filter Option.isSome
+let shift<'a when 'a:equality>  = List.filter ((<>) Option<'a>.None)
 
 let rec merge f xs
     = match xs with
@@ -28,25 +28,25 @@ let rec merge f xs
                             then (f <!> x <*> y) :: merge f xs
                             else x :: merge f (y :: xs)
 
-let move : row -> row 
-    = pad SIZE << List.rev << merge (+) << List.rev << shift
+let move f
+    = pad SIZE << List.rev << merge f << List.rev << shift
 
-let rec transpose board : board
+let rec transpose board
     = match board with
         | xs when List.concat xs = [] -> []
         | _ -> List.map List.head board :: transpose (List.map List.tail board)
 
-let moveRight = move |> List.map
-let moveLeft = List.rev << move << List.rev |> List.map
-let moveUp = transpose >> moveLeft >> transpose
-let moveDown = transpose << moveRight << transpose
+let moveRight f = move f |> List.map
+let moveLeft f = List.rev << move f << List.rev |> List.map
+let moveUp f = transpose >> moveLeft f >> transpose
+let moveDown f = transpose << moveRight f << transpose
 
-let moveDir key 
+let moveDir f key 
     = match key with
-        | 'h' -> moveLeft
-        | 'j' -> moveDown
-        | 'k' -> moveUp
-        | 'l' -> moveRight
+        | 'h' -> moveLeft f
+        | 'j' -> moveDown f
+        | 'k' -> moveUp f
+        | 'l' -> moveRight f
         | _ -> id
 
 let cellFormat x
@@ -56,35 +56,36 @@ let cellFormat x
 
 let rowformat = List.map cellFormat >> List.reduce (fun x y -> x+"|"+y) 
 
-let rowEmpty (n:int) (ns : row)
+//n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
+let rowEmpty (n:int) ns
     = List.mapi (fun i x -> match x with 
                               | None -> Some (n, i) 
                               | Some _ -> None) ns
+let boardEmpty<'a when 'a : equality> (xs : 'a option list list)
+    = (List.concat << List.mapi rowEmpty) xs |> List.filter (fun x -> match x with 
+                                                                        | Some _ -> true 
+                                                                        | None -> false)
 
-let boardEmpty
-    = (List.concat << List.mapi rowEmpty) >> List.filter (fun x -> match x with 
-                                                                     | Some _ -> true 
-                                                                     | None -> false)
-
-let replace n (m : cell)
+//replace the nth element with m, used to insert new cell
+let replace n m
     = List.mapi (fun i x -> if i=n 
                             then m 
                             else x)
 
-let insertNewCell k (t: int*int) 
-    = List.mapi (fun i (x:int option list) -> if i = fst t 
+let insertNewCell<'a> (k:'a) t
+    = List.mapi (fun i (x:'a option list) -> if i = fst t 
                                                then replace (snd t) (Some k) x 
                                                else x)
 
 let newCellCoord r b
     = concat <| nthOrNone (boardEmpty b) r
 
-let isWin x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
+let is2048 x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
 
-let boardFull : (board -> bool)
+let boardFull<'a when 'a : equality> :('a option list list -> bool)
     = List.isEmpty << boardEmpty
 
-let rec rowHasMerges (row : row) : bool  
+let rec rowHasMerges row
     = match row with
         | [] -> false
         | [x] -> false
@@ -103,24 +104,24 @@ let insertAtRandom (rnum : Random) board movedBoard
       then insertNewCell value <!> (emptyCell |> newCellCoord <| movedBoard) <*> returnM movedBoard
       else returnM board
 
-let showBoard : (board -> unit)
+let showBoard
     = printfn <| "%s" |> List.iter << List.map rowformat
 
-let initInsert rand : (board -> board option) = insertAtRandom rand start
+let initInsert rand = insertAtRandom rand start
 
 let rec game (rnum : Random) board : unit
     = if not <| hasNextMove board then rnum |> gameOver <| true
       Console.Clear()
       showBoard board
       let key = Console.ReadKey().KeyChar
-      let movedBoard = moveDir key board
+      let movedBoard = moveDir (+) key board
       let newBoard = insertAtRandom rnum board movedBoard
       Console.Clear()
       showBoard movedBoard
       Async.Sleep 15000 |> ignore
       Console.Clear()
       Option.iter showBoard newBoard
-      if isWin <!> newBoard |> getOrElse false 
+      if is2048 <!> newBoard |> getOrElse false 
       then rnum |> gameOver <| false
       game rnum <!> newBoard |> ignore
         
