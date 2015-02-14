@@ -41,12 +41,22 @@ let moveLeft f = List.rev << move f << List.rev |> List.map
 let moveUp f = transpose >> moveLeft f >> transpose
 let moveDown f = transpose << moveRight f << transpose
 
-let moveDir f key 
+type Direction = Up | Left | Right |Down
+
+let hjkl key 
     = match key with
-        | 'h' -> moveLeft f
-        | 'j' -> moveDown f
-        | 'k' -> moveUp f
-        | 'l' -> moveRight f
+        | ConsoleKey.H | ConsoleKey.A | ConsoleKey.LeftArrow -> Some Left
+        | ConsoleKey.J | ConsoleKey.S | ConsoleKey.DownArrow -> Some Down 
+        | ConsoleKey.K | ConsoleKey.W | ConsoleKey.UpArrow -> Some Up
+        | ConsoleKey.L | ConsoleKey.D | ConsoleKey.RightArrow -> Some Right
+        | _ -> None
+
+let moveDir f dir 
+    = match dir with
+        | Left -> moveLeft f
+        | Down -> moveDown f
+        | Up -> moveUp f
+        | Right -> moveRight f
         | _ -> id
 
 let cellFormat x
@@ -113,17 +123,17 @@ let rec game (rnum : Random) board : unit
     = if not <| hasNextMove board then rnum |> gameOver <| true
       Console.Clear()
       showBoard board
-      let key = Console.ReadKey().KeyChar
-      let movedBoard = moveDir (+) key board
-      let newBoard = insertAtRandom rnum board movedBoard
+      let key = Console.ReadKey().Key
+      let movedBoard = moveDir (+) <!> hjkl key <*> returnM board
+      let newBoard = insertAtRandom rnum board <!> movedBoard
       Console.Clear()
-      showBoard movedBoard
+      showBoard <!> movedBoard |> ignore
       Async.Sleep 15000 |> ignore
       Console.Clear()
-      Option.iter showBoard newBoard
-      if is2048 <!> newBoard |> getOrElse false 
+      Option.iter showBoard <!> newBoard |> ignore
+      if Option.map (Option.map is2048) newBoard |> getOrElse (returnM false) |> getOrElse false
       then rnum |> gameOver <| false
-      game rnum <!> newBoard |> ignore
+      (Option.map <| game rnum) <!> newBoard |> ignore
         
 
 and gameOver (rand : Random) (b : bool) : unit
