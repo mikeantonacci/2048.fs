@@ -71,9 +71,7 @@ let rowEmpty (n:int) ns
                               | None -> Some (n, i) 
                               | Some _ -> None) ns
 let boardEmpty<'a when 'a : equality> (xs : 'a option list list)
-    = (List.concat << List.mapi rowEmpty) xs |> List.filter (fun x -> match x with 
-                                                                        | Some _ -> true 
-                                                                        | None -> false)
+    = (List.concat << List.mapi rowEmpty) xs |> List.filter (Option.isSome)
 
 //replace the nth element with m, used to insert new cell
 let replace n m
@@ -83,13 +81,13 @@ let replace n m
 
 let insertNewCell<'a> (k:'a) t
     = List.mapi (fun i (x:'a option list) -> if i = fst t 
-                                               then replace (snd t) (Some k) x 
-                                               else x)
+                                             then replace (snd t) (Some k) x 
+                                             else x)
 
 let newCellCoord r b
     = concat <| nthOrNone (boardEmpty b) r
 
-let isWin win x = not (List.choose (List.tryFind (fun x -> x = Some win)) x).IsEmpty
+let isWin win x = not <| List.isEmpty (List.choose (List.tryFind ((=) <| Some win)) x)
 
 let boardFull<'a when 'a : equality> :('a option list list -> bool)
     = List.isEmpty << boardEmpty
