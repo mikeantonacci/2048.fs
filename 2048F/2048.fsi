@@ -7,15 +7,21 @@ type 'a row = 'a cell list
 type 'a board = 'a row list
 type Direction = Up | Left | Right |Down
 
-val moveDir<'a when 'a : equality> : ('a -> 'a -> 'a) -> Direction -> ('a board -> 'a board)
+val moveDir<'a when 'a : equality>
+    : ('a -> 'a -> 'a) -> Direction -> ('a board -> 'a board)
 
-val is2048 : int board -> bool
-val boardFull<'a when 'a : equality> :('a option list list -> bool)
-val hasNextMove<'a when 'a : equality> : 'a board -> bool
-val insertAtRandom : Random -> int board -> int board -> int board option 
+val boardFull<'a when 'a : equality>
+    : ('a option list list -> bool)
+
+val hasNextMove<'a when 'a : equality>
+    : 'a board -> bool
+
+val insertAtRandom<'a when 'a : equality>
+    : ('a*'a) -> Random -> 'a board -> 'a board -> 'a board option
+
+val isWin<'a when 'a : equality> : 'a -> 'a board -> bool
 
 val showBoard : (int board -> unit)
-
 val game : Random -> int board ->  unit
 val gameOver : Random -> bool -> unit
 val main : string[] -> int

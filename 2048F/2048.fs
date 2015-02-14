@@ -57,7 +57,6 @@ let moveDir f dir
         | Down -> moveDown f
         | Up -> moveUp f
         | Right -> moveRight f
-        | _ -> id
 
 let cellFormat x
     = match x with 
@@ -90,7 +89,7 @@ let insertNewCell<'a> (k:'a) t
 let newCellCoord r b
     = concat <| nthOrNone (boardEmpty b) r
 
-let is2048 x = not (List.choose (List.tryFind (fun x -> x = Some 2048)) x).IsEmpty
+let isWin win x = not (List.choose (List.tryFind (fun x -> x = Some win)) x).IsEmpty
 
 let boardFull<'a when 'a : equality> :('a option list list -> bool)
     = List.isEmpty << boardEmpty
@@ -107,8 +106,8 @@ let rec boardHasMerges b
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
-let insertAtRandom (rnum : Random) board movedBoard
-    = let value = if rnum.Next 9 = 0 then 4 else 2
+let insertAtRandom (x,y) (rnum : Random) board movedBoard
+    = let value = if rnum.Next 9 = 0 then y else x
       let emptyCell = rnum.Next <| (boardEmpty movedBoard |> List.length)
       if board <> movedBoard || board = start
       then insertNewCell value <!> (emptyCell |> newCellCoord <| movedBoard) <*> returnM movedBoard
@@ -117,7 +116,7 @@ let insertAtRandom (rnum : Random) board movedBoard
 let showBoard
     = printfn <| "%s" |> List.iter << List.map rowformat
 
-let initInsert rand = insertAtRandom rand start
+let initInsert rand = insertAtRandom (2,4) rand start
 
 let rec game (rnum : Random) board : unit
     = if not <| hasNextMove board then rnum |> gameOver <| true
@@ -125,13 +124,13 @@ let rec game (rnum : Random) board : unit
       showBoard board
       let key = Console.ReadKey().Key
       let movedBoard = moveDir (+) <!> hjkl key <*> returnM board
-      let newBoard = insertAtRandom rnum board <!> movedBoard
+      let newBoard = insertAtRandom (2,4) rnum board <!> movedBoard
       Console.Clear()
       showBoard <!> movedBoard |> ignore
       Async.Sleep 15000 |> ignore
       Console.Clear()
       Option.iter showBoard <!> newBoard |> ignore
-      if Option.map (Option.map is2048) newBoard |> getOrElse (returnM false) |> getOrElse false
+      if Option.map (Option.map <| isWin 2048) newBoard |> getOrElse (returnM false) |> getOrElse false
       then rnum |> gameOver <| false
       (Option.map <| game rnum) <!> newBoard |> ignore
         
