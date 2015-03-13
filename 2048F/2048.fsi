@@ -8,7 +8,7 @@ type 'a board = 'a row list
 type Direction = Up | Left | Right |Down
 
 val moveDir<'a when 'a : equality>
-    : ('a -> 'a -> 'a) -> Direction -> ('a board -> 'a board)
+    : ('a -> 'a -> 'a) -> Direction option -> ('a board -> 'a board)
 
 val boardFull<'a when 'a : equality>
     : ('a option list list -> bool)

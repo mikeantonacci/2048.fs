@@ -53,10 +53,11 @@ let hjkl key
 
 let moveDir f dir 
     = match dir with
-        | Left -> moveLeft f
-        | Down -> moveDown f
-        | Up -> moveUp f
-        | Right -> moveRight f
+        | Some Left -> moveLeft f
+        | Some Down -> moveDown f
+        | Some Up -> moveUp f
+        | Some Right -> moveRight f
+        | None -> id
 
 let cellFormat x
     = match x with 
@@ -121,16 +122,16 @@ let rec game (rnum : Random) board : unit
       Console.Clear()
       showBoard board
       let key = Console.ReadKey().Key
-      let movedBoard = moveDir (+) <!> hjkl key <*> returnM board
-      let newBoard = insertAtRandom (2,4) rnum board <!> movedBoard
+      let movedBoard = moveDir (+) (hjkl key) <| board
+      let newBoard = insertAtRandom (2,4) rnum board <| movedBoard
       Console.Clear()
-      showBoard <!> movedBoard |> ignore
+      showBoard <| movedBoard |> ignore
       Async.Sleep 15000 |> ignore
       Console.Clear()
-      Option.iter showBoard <!> newBoard |> ignore
-      if Option.map (Option.map <| isWin 2048) newBoard |> getOrElse (returnM false) |> getOrElse false
+      Option.iter showBoard <| newBoard |> ignore
+      if (Option.map <| isWin 2048) newBoard |> getOrElse (false) |> getOrElse <| returnM false
       then rnum |> gameOver <| false
-      (Option.map <| game rnum) <!> newBoard |> ignore
+      (Option.map <| game rnum) <| newBoard |> ignore
         
 
 and gameOver (rand : Random) (b : bool) : unit
