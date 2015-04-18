@@ -1,4 +1,5 @@
 #!/bin/bash
+cd 2048F
 
 if [ ! -d FSharpx.Core.* ]; then
 	nuget install FSharpx.Core
