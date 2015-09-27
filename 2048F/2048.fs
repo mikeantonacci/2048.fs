@@ -129,7 +129,7 @@ let rec game (rnum : Random) board : unit
       Async.Sleep 15000 |> ignore
       Console.Clear()
       Option.iter showBoard <| newBoard |> ignore
-      if (Option.map <| isWin 2048) newBoard |> getOrElse (false) |> getOrElse <| returnM false
+      if (Option.map <| isWin 2048) newBoard |> getOrElse (false) 
       then rnum |> gameOver <| false
       (Option.map <| game rnum) <| newBoard |> ignore
         
