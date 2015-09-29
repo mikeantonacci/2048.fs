@@ -86,7 +86,7 @@ let insertNewCell<'a> (k:'a) t
                                              else x)
 
 let newCellCoord r b
-    = concat <| nthOrNone (boardEmpty b) r
+    = nthOrNone (boardEmpty b) r |> concat 
 
 let isWin win x = not <| List.isEmpty (List.choose (List.tryFind ((=) <| Some win)) x)
 
@@ -106,32 +106,36 @@ let rec boardHasMerges b
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
 let insertAtRandom (x,y) (rnum : Random) board movedBoard
-    = let value = if rnum.Next 9 = 0 then y else x
-      let emptyCell = rnum.Next <| (boardEmpty movedBoard |> List.length)
+    = let value = if rnum.Next 9 = 0
+                  then y
+                  else x
+      let emptyCell = boardEmpty movedBoard |> List.length |> rnum.Next 
       if board <> movedBoard || board = start
-      then insertNewCell value <!> (emptyCell |> newCellCoord <| movedBoard) <*> returnM movedBoard
+      then insertNewCell value <!> (newCellCoord emptyCell movedBoard) <*> returnM movedBoard
       else returnM board
 
 let showBoard
-    = printfn <| "%s" |> List.iter << List.map rowformat
+    = printfn "%s" |> List.iter << List.map rowformat
 
 let initInsert rand = insertAtRandom (2,4) rand start
 
+let initialize rnum = initInsert rnum >=> initInsert rnum <| start
+
 let rec game (rnum : Random) board : unit
-    = if not <| hasNextMove board then rnum |> gameOver <| true
+    = if not (hasNextMove board) then gameOver rnum true
       Console.Clear()
       showBoard board
       let key = Console.ReadKey().Key
-      let movedBoard = moveDir (+) (hjkl key) <| board
-      let newBoard = insertAtRandom (2,4) rnum board <| movedBoard
+      let movedBoard = moveDir (+) (hjkl key) board
+      let newBoard = insertAtRandom (2,4) rnum board movedBoard 
       Console.Clear()
-      showBoard <| movedBoard |> ignore
+      showBoard movedBoard |> ignore
       Async.Sleep 15000 |> ignore
       Console.Clear()
-      Option.iter showBoard <| newBoard |> ignore
-      if (Option.map <| isWin 2048) newBoard |> getOrElse (false) 
-      then rnum |> gameOver <| false
-      (Option.map <| game rnum) <| newBoard |> ignore
+      Option.iter showBoard newBoard |> ignore
+      if isWin 2048 <!> newBoard |> getOrElse false 
+      then gameOver rnum false
+      game rnum <!> newBoard |> ignore
         
 
 and gameOver (rand : Random) (b : bool) : unit
@@ -141,7 +145,7 @@ and gameOver (rand : Random) (b : bool) : unit
       let key = Console.ReadKey().KeyChar
       Console.Clear()
       let cont = match key with
-                   | 'y' -> game rand <!> (initInsert rand >=> initInsert rand <| start) |> ignore
+                   | 'y' -> game rand <!> (initialize rand) |> ignore
                    | 'n' -> Environment.Exit 0
                    | _ -> gameOver rand true
       ()
@@ -152,5 +156,5 @@ let main argv =
     printfn "%s" "Press any key to play."
     Console.ReadKey() |> ignore
     let rnum = new Random()
-    game rnum <!> (initInsert rnum >=> initInsert rnum <| start) |> ignore
+    game rnum <!> (initialize rnum) |> ignore
     0 // return an integer exit code
