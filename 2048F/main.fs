@@ -5,13 +5,11 @@ open FSharpx.Option
 open FSharpx.Prelude
 open _2048
 
-let initInsert rand = insertAtRandom (2,4) rand
+let initInsert (board: int Board) = board.InsertAtRandom 
 
-let initialize rnum = initInsert rnum >=> initInsert rnum <| start
+let initialize rnum (board: int Board) = initInsert board rnum |> flip initInsert rnum 
 
-let movePlus = moveDir (+)
-
-let hjkl key 
+let hjkl key : Direction option 
     = match key with
         | ConsoleKey.H | ConsoleKey.A | ConsoleKey.LeftArrow -> Some Left
         | ConsoleKey.J | ConsoleKey.S | ConsoleKey.DownArrow -> Some Down 
@@ -19,50 +17,61 @@ let hjkl key
         | ConsoleKey.L | ConsoleKey.D | ConsoleKey.RightArrow -> Some Right
         | _ -> None
 
-let cellFormat x
-    = match x with 
-        | Some n -> sprintf "%-4i" n 
-        | None -> "    "
+let boardFormat =
+    let cellFormat x : string
+        = match x with 
+            | Some n -> sprintf "%-4i" n 
+            | None -> "    "
 
-let rowformat = List.map cellFormat >> List.reduce (fun x y -> x+"|"+y) 
+    let rowFormat: int option list -> string
+        = String.concat "|" << List.map cellFormat
 
-let showBoard
-    = printfn "%s" |> List.iter << List.map rowformat
-
-let rec game (rnum : Random) board : unit
-    = if not (hasNextMove board) then gameOver rnum true
-      Console.Clear()
-      showBoard board
-      let key = Console.ReadKey().Key
-      let movedBoard = movePlus (hjkl key) board
-      let newBoard = if board <> movedBoard || board = start 
-                     then insertAtRandom (2,4) rnum movedBoard 
-                     else returnM movedBoard
-      Console.Clear()
-      showBoard movedBoard |> ignore
-      Async.Sleep 15000 |> ignore
-      Console.Clear()
-      Option.iter showBoard newBoard |> ignore
-      if isWin 2048 <!> newBoard |> getOrElse false 
-      then gameOver rnum false
-      game rnum <!> newBoard |> ignore
-
-and gameOver (rand : Random) (b : bool) : unit
-    = printfn "%s" (if b 
-                    then "Game Over. Play Again? (y/n)" 
-                    else "2048! Play Again? (y/n)")
-      let key = Console.ReadKey().KeyChar
-      Console.Clear()
-      let cont = match key with
-                   | 'y' -> game rand <!> (initialize rand) |> ignore
-                   | 'n' -> Environment.Exit 0
-                   | _ -> gameOver rand true
-      ()
+    String.concat "\n" << List.map rowFormat 
 
 [<EntryPoint>]
 let main argv = 
-    printfn "%s" "Press any key to play."
-    Console.ReadKey() |> ignore
+    let start = Board.constructBoard 4 (2,4) 2048 (+)
+
+    let showBoard : int option list list -> unit
+        = printfn "%s" << boardFormat
+
+    let rec game (rnum : Random) (board : int Board) : unit =
+          do
+              if not board.HasNextMove then gameOver rnum true start
+              Console.Clear()
+              Option.iter showBoard board.Board
+          let key = Console.ReadKey().Key
+          let movedBoard = board.MoveDir (hjkl key)  
+          do
+              Console.Clear()
+              Option.iter showBoard movedBoard.Board
+          let newBoard = if board.Board <> movedBoard.Board || board.Board = start.Board
+                         then movedBoard.InsertAtRandom rnum
+                         else movedBoard
+          do
+              async {do! Async.Sleep 100} |> Async.RunSynchronously
+              Console.Clear()
+              Option.iter showBoard newBoard.Board
+              if newBoard.IsWin 
+              then gameOver rnum false start
+              else game rnum newBoard |> ignore
+
+    and gameOver (rand : Random) (b : bool) start : unit
+        = do printfn "%s" (if b 
+                           then "Game Over. Play Again? (y/n)" 
+                           else "2048! Play Again? (y/n)")
+          let key = Console.ReadKey().KeyChar
+          do
+              Console.Clear()
+              match key with
+                | 'y' -> game rand (initialize rand start) |> ignore
+                | 'n' -> Environment.Exit 0
+                | _ -> gameOver rand true start
+          ()
+
+    do
+        printfn "%s" "Press any key to play."
+        Console.ReadKey() |> ignore
     let rnum = new Random()
-    game rnum <!> (initialize rnum) |> ignore
+    do game rnum (initialize rnum start) |> ignore
     0 // return an integer exit code
