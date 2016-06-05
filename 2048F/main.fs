@@ -37,7 +37,7 @@ let main argv =
               Console.Clear()
               printfn "%s" board.Show
               let key = Console.ReadKey().Key
-              let movedBoard = board.MoveDir <!> hjkl key |> getOrElse board
+              let movedBoard = board.MoveDir <!> (hjkl key) |> getOrElse board
               Console.Clear()
               printfn "%s" movedBoard.Show
               let newBoard

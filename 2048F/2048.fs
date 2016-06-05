@@ -89,7 +89,7 @@ let insertAtRandom (x,y) (rnum : Random) (movedBoard: 'a board) : 'a board
                     | 0 -> y 
                     | _ -> x
       let newCellCoord r b
-          = List.item r (boardEmpty b) 
+          = List.nth (boardEmpty b) r
       let emptyCell = boardEmpty movedBoard |> List.length |> rnum.Next 
       (insertNewCell value) (newCellCoord emptyCell movedBoard) movedBoard
 
