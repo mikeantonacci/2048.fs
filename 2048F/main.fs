@@ -2,12 +2,11 @@
 
 open System
 open FSharpx.Option
-open FSharpx.Prelude
 open _2048
 
-let initInsert (board: int Board) = board.InsertAtRandom 
+let initInsert rnum (board: 'a Board) = board.InsertAtRandom rnum
 
-let initialize rnum (board: int Board) = initInsert board rnum |> flip initInsert rnum 
+let initialize rnum = initInsert rnum << initInsert rnum 
 
 let hjkl key : Direction option 
     = match key with
@@ -30,31 +29,28 @@ let boardFormat =
 
 [<EntryPoint>]
 let main argv = 
-    let start = Board.constructBoard 4 (2,4) 2048 (+)
+    let start = Board.construct 4 (2,4) 2048 (+) boardFormat
 
-    let showBoard : int option list list -> unit
-        = printfn "%s" << boardFormat
-
-    let rec game (rnum : Random) (board : int Board) : unit =
+    let rec game (rnum : Random) (board : 'a Board) : unit =
           do
               if not board.HasNextMove then gameOver rnum true start
               Console.Clear()
-              Option.iter showBoard board.Board
-          let key = Console.ReadKey().Key
-          let movedBoard = board.MoveDir (hjkl key)  
-          do
+              printfn "%s" board.Show
+              let key = Console.ReadKey().Key
+              let movedBoard = board.MoveDir <!> hjkl key |> getOrElse board
               Console.Clear()
-              Option.iter showBoard movedBoard.Board
-          let newBoard = if board.Board <> movedBoard.Board || board.Board = start.Board
-                         then movedBoard.InsertAtRandom rnum
-                         else movedBoard
-          do
-              async {do! Async.Sleep 100} |> Async.RunSynchronously
+              printfn "%s" movedBoard.Show
+              let newBoard
+                  = if board <> movedBoard
+                    then 
+                        do async {do! Async.Sleep 100} |> Async.RunSynchronously
+                        movedBoard.InsertAtRandom rnum
+                    else movedBoard
               Console.Clear()
-              Option.iter showBoard newBoard.Board
+              printfn "%s" newBoard.Show
               if newBoard.IsWin 
               then gameOver rnum false start
-              else game rnum newBoard |> ignore
+              else game rnum newBoard
 
     and gameOver (rand : Random) (b : bool) start : unit
         = do printfn "%s" (if b 
@@ -64,7 +60,7 @@ let main argv =
           do
               Console.Clear()
               match key with
-                | 'y' -> game rand (initialize rand start) |> ignore
+                | 'y' -> game rand <| initialize rand start
                 | 'n' -> Environment.Exit 0
                 | _ -> gameOver rand true start
           ()

@@ -1,12 +1,12 @@
 ﻿module _2048
 
 open System
-open FSharpx.Prelude
 open FSharpx.Option
 
 type 'a cell = 'a option
 type 'a row = 'a cell list
 type 'a board = 'a row list
+type Direction = Up | Left | Right |Down
 
 let rec pad n xs
     = if List.length xs = n 
@@ -40,23 +40,21 @@ let moveUp f size : 'a board -> 'a board
 let moveDown f size : 'a board -> 'a board
     = transpose << moveRight f size << transpose
 
-type Direction = Up | Left | Right |Down
-
-let moveDir f size dir 
+let moveDir f size dir : 'a board -> 'a board
     = match dir with
-        | Some Left -> moveLeft f size
-        | Some Down -> moveDown f size 
-        | Some Up -> moveUp f size 
-        | Some Right -> moveRight f size 
-        | None -> id
+        | Left -> moveLeft f size
+        | Down -> moveDown f size 
+        | Up -> moveUp f size 
+        | Right -> moveRight f size 
 
 //n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
-let boardEmpty<'a when 'a : equality> (xs : 'a option list list) = 
+//Option.get must be safe here because of the Option.isSome
+let boardEmpty<'a when 'a : equality> : 'a option list list -> (int*int) list = 
     let rowEmpty (n:int) ns
         = List.mapi (fun i x -> match x with 
                                   | None -> Some (n, i) 
                                   | Some _ -> None) ns
-    (List.concat << List.mapi rowEmpty) xs |> List.filter (Option.isSome)
+    List.map Option.get << List.filter Option.isSome << List.concat << List.mapi rowEmpty
 
 let insertNewCell<'a> (k:'a) (i,j) : 'a board -> 'a board
     =
@@ -86,22 +84,28 @@ let rec boardHasMerges (b: 'a board)
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
-let insertAtRandom (x,y) (rnum : Random) (movedBoard: 'a board) : 'a board option
+let insertAtRandom (x,y) (rnum : Random) (movedBoard: 'a board) : 'a board
     = let value = match rnum.Next 9 with
                     | 0 -> y 
                     | _ -> x
       let newCellCoord r b
           = List.item r (boardEmpty b) 
       let emptyCell = boardEmpty movedBoard |> List.length |> rnum.Next 
-      (flip (insertNewCell value) movedBoard) <!> (newCellCoord emptyCell movedBoard) 
+      (insertNewCell value) (newCellCoord emptyCell movedBoard) movedBoard
 
-type Board<'a when 'a : equality>(board: 'a board option, moveDir: Direction option -> 'a board -> 'a board, values: 'a*'a, size: int, win: 'a) = 
+type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a board -> 'a board, values: 'a*'a, size: int, win: 'a, show: 'a board -> string) = 
     member this.Board = board
-    member this.MoveDir dir = Board(moveDir dir <!> this.Board, moveDir, values, size, win)
-    member this.InsertAtRandom rnum = Board(this.Board >>= (insertAtRandom values rnum), moveDir, values, size, win)
-    member this.HasNextMove = hasNextMove <!> this.Board |> Option.exists id
-    member this.IsWin = isWin win <!> this.Board |> Option.exists id
-    static member constructBoard (size: int) (values: 'a*'a) (win: 'a) (op: 'a -> 'a -> 'a) : 'a Board =
+    member this.MoveDir dir = Board(moveDir dir this.Board, moveDir, values, size, win, show)
+    member this.InsertAtRandom rnum = Board(this.Board |> (insertAtRandom values rnum), moveDir, values, size, win, show)
+    member this.HasNextMove = hasNextMove this.Board
+    member this.IsWin = isWin win this.Board
+    member this.Show = show this.Board
+    override x.Equals(yobj) = 
+        match yobj with
+          | :? Board<'a> as y -> x.Board = y.Board
+          | _ -> false 
+    override x.GetHashCode() = hash x.Board
+    static member construct (size: int) (values: 'a*'a) (win: 'a) (op: 'a -> 'a -> 'a) (show: 'a board -> string) : 'a Board =
         let size = size
         let board = List.init size (fun x -> List.init size (fun y -> Option<'a>.None))
-        Board(Some board, moveDir op size, values, size, win)
+        Board(board, moveDir op size, values, size, win, show)
