@@ -7,6 +7,8 @@ type 'a row = 'a cell list
 type 'a board = 'a row list
 type Direction = Up | Left | Right |Down
 
+val start<'a when 'a : equality> : 'a board
+
 val moveDir<'a when 'a : equality>
     : ('a -> 'a -> 'a) -> Direction option -> ('a board -> 'a board)
 
@@ -16,12 +18,7 @@ val boardFull<'a when 'a : equality>
 val hasNextMove<'a when 'a : equality>
     : 'a board -> bool
 
-val insertAtRandom<'a when 'a : equality>
-    : ('a*'a) -> Random -> 'a board -> 'a board -> 'a board option
-
 val isWin<'a when 'a : equality> : 'a -> 'a board -> bool
 
-val showBoard : (int board -> unit)
-val game : Random -> int board ->  unit
-val gameOver : Random -> bool -> unit
-val main : string[] -> int
+val insertAtRandom<'a when 'a : equality>
+    : ('a*'a) -> Random -> 'a board -> 'a board option

@@ -58,6 +58,7 @@
     <Compile Include="2048.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
+    <Compile Include="main.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharpx.Core">
