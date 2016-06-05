@@ -69,5 +69,5 @@ let main argv =
         printfn "%s" "Press any key to play."
         Console.ReadKey() |> ignore
     let rnum = new Random()
-    do game rnum (initialize rnum start) |> ignore
+    do game rnum (initialize rnum start)
     0 // return an integer exit code

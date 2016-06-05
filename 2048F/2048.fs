@@ -2,16 +2,17 @@
 
 open System
 open FSharpx.Option
+open FSharpx.Collections.List
 
 type 'a cell = 'a option
 type 'a row = 'a cell list
 type 'a board = 'a row list
 type Direction = Up | Left | Right |Down
-
-let rec pad n xs
+ 
+let rec leftpad n xs
     = if List.length xs = n 
       then xs 
-      else pad n (None::xs)
+      else leftpad n (None::xs)
 
 let shift<'a when 'a:equality>  = List.filter ((<>) Option<'a>.None)
 
@@ -24,12 +25,7 @@ let rec merge f xs
                             else x :: merge f (y :: xs)
 
 let move f size : 'a row -> 'a row
-    = pad size << List.rev << merge f << List.rev << shift
-
-let rec transpose (board: 'a board) : 'a board
-    = match board with
-        | xs when List.concat xs = [] -> []
-        | _ -> List.map List.head board :: transpose (List.map List.tail board)
+    = leftpad size << List.rev << merge f << List.rev << shift
 
 let moveRight f size : 'a board -> 'a board
     = move f size |> List.map
