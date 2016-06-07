@@ -29,17 +29,17 @@ let boardFormat =
 
 [<EntryPoint>]
 let main argv = 
-    let start = Board.construct 4 (2,4) 2048 (+) boardFormat
+    let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),toString=boardFormat)
 
     let rec game (rnum : Random) (board : 'a Board) : unit =
           do
               if not board.HasNextMove then gameOver rnum true start
               Console.Clear()
-              printfn "%s" board.Show
+              printfn "%s" <| board.ToString()
               let key = Console.ReadKey().Key
               let movedBoard = board.MoveDir <!> (hjkl key) |> getOrElse board
               Console.Clear()
-              printfn "%s" movedBoard.Show
+              printfn "%s" <| movedBoard.ToString()
               let newBoard
                   = if board <> movedBoard
                     then 
@@ -47,7 +47,7 @@ let main argv =
                         movedBoard.InsertAtRandom rnum
                     else movedBoard
               Console.Clear()
-              printfn "%s" newBoard.Show
+              printfn "%s" <| newBoard.ToString()
               if newBoard.IsWin 
               then gameOver rnum false start
               else game rnum newBoard

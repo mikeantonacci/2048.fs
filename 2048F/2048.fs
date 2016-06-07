@@ -89,19 +89,30 @@ let insertAtRandom (x,y) (rnum : Random) (movedBoard: 'a board) : 'a board
       let emptyCell = boardEmpty movedBoard |> List.length |> rnum.Next 
       (insertNewCell value) (newCellCoord emptyCell movedBoard) movedBoard
 
-type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a board -> 'a board, values: 'a*'a, size: int, win: 'a, show: 'a board -> string) = 
+type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a board -> 'a board, values: 'a*'a, size: int, win: 'a, str: 'a board -> string) = 
     member this.Board = board
-    member this.MoveDir dir = Board(moveDir dir this.Board, moveDir, values, size, win, show)
-    member this.InsertAtRandom rnum = Board(this.Board |> (insertAtRandom values rnum), moveDir, values, size, win, show)
+
+    member this.MoveDir dir
+        = Board(moveDir dir this.Board, moveDir, values, size, win, str)
+
+    member this.InsertAtRandom rnum
+        = Board(this.Board |> (insertAtRandom values rnum), moveDir, values, size, win, str)
+
     member this.HasNextMove = hasNextMove this.Board
+
     member this.IsWin = isWin win this.Board
-    member this.Show = show this.Board
+
+    override this.ToString() = str this.Board
+
     override x.Equals(yobj) = 
         match yobj with
           | :? Board<'a> as y -> x.Board = y.Board
           | _ -> false 
+
     override x.GetHashCode() = hash x.Board
-    static member construct (size: int) (values: 'a*'a) (win: 'a) (op: 'a -> 'a -> 'a) (show: 'a board -> string) : 'a Board =
+
+    static member construct((size: int), (values: 'a*'a), (win: 'a), (op: 'a -> 'a -> 'a), (?str: 'a board -> string)) : 'a Board =
         let size = size
         let board = List.init size (fun x -> List.init size (fun y -> Option<'a>.None))
-        Board(board, moveDir op size, values, size, win, show)
+        let toString = defaultArg str <| fun b -> b.ToString()
+        Board(board, moveDir op size, values, size, win, toString)
