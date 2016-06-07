@@ -2,7 +2,10 @@
 
 open System
 open FSharpx.Option
-open FSharpx.Collections.List
+open FSharpx.Functional.Lens
+open FSharpx.Functional.Lens.Operators
+let transpose = FSharpx.Collections.List.transpose
+let konst = FSharpx.Functional.Prelude.konst
 
 type 'a cell = 'a option
 type 'a row = 'a cell list
@@ -14,8 +17,6 @@ let rec leftpad n xs
       then xs 
       else leftpad n (None::xs)
 
-let shift<'a when 'a:equality>  = List.filter ((<>) Option<'a>.None)
-
 let rec merge f xs
     = match xs with
         | [] -> []
@@ -25,7 +26,7 @@ let rec merge f xs
                             else x :: merge f (y :: xs)
 
 let move f size : 'a row -> 'a row
-    = leftpad size << List.rev << merge f << List.rev << shift
+    = leftpad size << List.rev << merge f << List.rev << List.filter Option.isSome
 
 let moveRight f size : 'a board -> 'a board
     = move f size |> List.map
@@ -52,18 +53,11 @@ let boardEmpty<'a when 'a : equality> : 'a option list list -> (int*int) list =
                                   | Some _ -> None) ns
     List.map Option.get << List.filter Option.isSome << List.concat << List.mapi rowEmpty
 
-let insertNewCell<'a> (k:'a) (i,j) : 'a board -> 'a board
-    =
-    let replace j k
-        = List.mapi (fun idx x -> if idx = j 
-                                  then k 
-                                  else x)
+let insertNewCell<'a> (k:'a) (i,j): 'a option list list -> 'a option list list = 
+    forList i >>| forList j |> update (returnM k |> konst)
 
-    List.mapi (fun idx row -> if idx = i 
-                                then replace j (Some k) row 
-                                else row)
-
-let isWin win x = not <| List.isEmpty (List.choose (List.tryFind ((=) <| Some win)) x)
+let isWin win =
+    List.reduce (||) << List.map (List.exists ((=) <| Some win))
 
 let boardFull<'a when 'a : equality> :('a board -> bool)
     = List.isEmpty << boardEmpty
