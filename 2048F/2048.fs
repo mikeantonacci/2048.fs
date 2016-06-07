@@ -2,8 +2,10 @@
 
 open System
 open FSharpx.Option
-open FSharpx.Functional.Lens
 open FSharpx.Functional.Lens.Operators
+
+let update = FSharpx.Functional.Lens.update
+let forList = FSharpx.Functional.Lens.forList
 let transpose = FSharpx.Collections.List.transpose
 let konst = FSharpx.Functional.Prelude.konst
 
@@ -46,42 +48,41 @@ let moveDir f size dir : 'a board -> 'a board
 
 //n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
 //Option.get must be safe here because of the Option.isSome
-let boardEmpty<'a when 'a : equality> : 'a option list list -> (int*int) list = 
-    let rowEmpty (n:int) ns
-        = List.mapi (fun i x -> match x with 
-                                  | None -> Some (n, i) 
+let findOpenCells<'a when 'a : equality> : 'a option list list -> (int*int) list = 
+    let rowEmpty (i:int) (ns: 'a option list): (int*int) option list
+        = List.mapi (fun j x -> match x with 
+                                  | None -> Some (i, j) 
                                   | Some _ -> None) ns
     List.map Option.get << List.filter Option.isSome << List.concat << List.mapi rowEmpty
 
-let insertNewCell<'a> (k:'a) (i,j): 'a option list list -> 'a option list list = 
-    forList i >>| forList j |> update (returnM k |> konst)
+let insertNewCell k (i,j): 'a option list list -> 'a option list list = 
+    update (konst k) (forList i >>| forList j)
 
 let isWin win =
     List.reduce (||) << List.map (List.exists ((=) <| Some win))
 
 let boardFull<'a when 'a : equality> :('a board -> bool)
-    = List.isEmpty << boardEmpty
+    = List.isEmpty << findOpenCells
 
-let rec rowHasMerges (row: 'a row)
+let rec rowHasMerges (row: 'a list): bool
     = match row with
         | [] -> false
         | [x] -> false
         | (x :: y :: xs) -> if x = y then true else rowHasMerges (y::xs)
 
 let rec boardHasMerges (b: 'a board)
-    = List.exists ((=) true) (List.map rowHasMerges <| b) 
-    || List.exists ((=) true) (List.map rowHasMerges <| transpose b)
+    = List.reduce (||) (List.map rowHasMerges <| b) 
+    || List.reduce (||) (List.map rowHasMerges <| transpose b)
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
-let insertAtRandom (x,y) (rnum : Random) (movedBoard: 'a board) : 'a board
+let insertAtRandom (x,y) (rnum : Random) (board: 'a board) : 'a board
     = let value = match rnum.Next 9 with
-                    | 0 -> y 
-                    | _ -> x
-      let newCellCoord r b
-          = List.nth (boardEmpty b) r
-      let emptyCell = boardEmpty movedBoard |> List.length |> rnum.Next 
-      (insertNewCell value) (newCellCoord emptyCell movedBoard) movedBoard
+                    | 0 -> Some y 
+                    | _ -> Some x
+      let openCells = findOpenCells board
+      let newCell = openCells.[rnum.Next openCells.Length] 
+      insertNewCell value newCell board
 
 type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a board -> 'a board, values: 'a*'a, size: int, win: 'a, str: 'a board -> string) = 
     member this.Board = board
@@ -90,7 +91,7 @@ type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a boar
         = Board(moveDir dir this.Board, moveDir, values, size, win, str)
 
     member this.InsertAtRandom rnum
-        = Board(this.Board |> (insertAtRandom values rnum), moveDir, values, size, win, str)
+        = Board(insertAtRandom values rnum this.Board, moveDir, values, size, win, str)
 
     member this.HasNextMove = hasNextMove this.Board
 
