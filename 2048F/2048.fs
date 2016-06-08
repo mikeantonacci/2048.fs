@@ -56,15 +56,12 @@ module private __2048 =
     let boardFull<'a when 'a : equality> : 'a board -> bool
         = List.isEmpty << findOpenCells
 
-    let rec rowHasMerges row
-        = match row with
-            | [] -> false
-            | [x] -> false
-            | (x :: y :: xs) -> if x = y then true else rowHasMerges (y::xs)
+    let rowHasMerges<'a when 'a : equality> : 'a row -> bool
+         = Seq.exists (fun (x,y) -> x = y) << Seq.pairwise << List.toSeq
 
     let rec boardHasMerges board
-        = List.reduce (||) [for row in board do yield rowHasMerges row] 
-        || List.reduce (||) [for row in transpose board do yield rowHasMerges row]
+        = List.exists id [for row in board do yield rowHasMerges row] 
+        || List.exists id [for row in transpose board do yield rowHasMerges row]
 
     let insertAtRandom (x,y) (rnum: System.Random) board
         = let value = match rnum.Next 9 with
@@ -89,7 +86,7 @@ type Board<'a when 'a : equality>(board:'a board, moveDir:Direction -> 'a board 
         = not (List.isEmpty << findOpenCells <| this.Board) || (boardHasMerges this.Board)
 
     member this.IsWin = //isWin win this.Board
-        List.reduce (||) << List.map (List.exists ((=) <| Some win)) <| this.Board
+        List.exists id << List.map (List.exists ((=) <| Some win)) <| this.Board
 
     override this.ToString() = str this.Board
 
