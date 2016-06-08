@@ -2,12 +2,9 @@
 
 open System
 open FSharpx.Option
-open FSharpx.Functional.Lens.Operators
-
-let update = FSharpx.Functional.Lens.update
-let forList = FSharpx.Functional.Lens.forList
+open Aether
+open Aether.Operators
 let transpose = FSharpx.Collections.List.transpose
-let konst = FSharpx.Functional.Prelude.konst
 
 type 'a cell = 'a option
 type 'a row = 'a cell list
@@ -55,8 +52,8 @@ let findOpenCells<'a when 'a : equality> : 'a option list list -> (int*int) list
                                   | Some _ -> None) ns
     List.map Option.get << List.filter Option.isSome << List.concat << List.mapi rowEmpty
 
-let insertNewCell k (i,j): 'a option list list -> 'a option list list = 
-    update (konst k) (forList i >>| forList j)
+let insertNewCell k (i,j): 'a list list -> 'a list list =
+    k ^= (List.pos_ i >?> List.pos_ j)
 
 let isWin win =
     List.reduce (||) << List.map (List.exists ((=) <| Some win))
@@ -76,7 +73,7 @@ let rec boardHasMerges (b: 'a board)
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
-let insertAtRandom (x,y) (rnum : Random) (board: 'a board) : 'a board
+let insertAtRandom (x,y) (rnum: Random) (board: 'a board) : 'a board
     = let value = match rnum.Next 9 with
                     | 0 -> Some y 
                     | _ -> Some x

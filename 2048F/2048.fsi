@@ -9,5 +9,5 @@ type Board<'a when 'a : equality> =
         member InsertAtRandom : System.Random -> 'a Board 
         member HasNextMove : bool
         member IsWin : bool
-        static member construct: size: int * values: ('a * 'a) * win: 'a * op: ('a -> 'a -> 'a) * ?toString: ('a option list list -> string) -> Board<'a>
+        static member construct : size: int * values: ('a * 'a) * win: 'a * op: ('a -> 'a -> 'a) * ?toString: ('a option list list -> string) -> Board<'a>
     end 
