@@ -4,6 +4,8 @@ open System
 open FSharpx.Option
 open Aether
 open Aether.Operators
+
+let fill = FSharpx.Collections.List.fill
 let transpose = FSharpx.Collections.List.transpose
 
 type 'a cell = 'a option
@@ -11,11 +13,6 @@ type 'a row = 'a cell list
 type 'a board = 'a row list
 type Direction = Up | Left | Right |Down
  
-let rec leftpad n xs
-    = if List.length xs = n 
-      then xs 
-      else leftpad n (None::xs)
-
 let rec merge f xs
     = match xs with
         | [] -> []
@@ -25,11 +22,11 @@ let rec merge f xs
                             else x :: merge f (y :: xs)
 
 let move f size : 'a row -> 'a row
-    = leftpad size << List.rev << merge f << List.rev << List.filter Option.isSome
+    = fill size None <<  merge f  << List.filter Option.isSome
 
-let moveRight f size : 'a board -> 'a board
+let moveLeft f size : 'a board -> 'a board
     = move f size |> List.map
-let moveLeft f size: 'a board -> 'a board
+let moveRight f size: 'a board -> 'a board
     = List.rev << move f size << List.rev |> List.map
 let moveUp f size : 'a board -> 'a board
     = transpose >> moveLeft f size >> transpose
