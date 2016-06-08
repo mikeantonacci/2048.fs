@@ -21,24 +21,24 @@ let rec merge f xs
                             then (f <!> x <*> y) :: merge f xs
                             else x :: merge f (y :: xs)
 
-let move f size : 'a row -> 'a row
-    = fill size None <<  merge f  << List.filter Option.isSome
+let move f (l : 'a row) : 'a row
+    = fill l.Length None <<  merge f  << List.filter Option.isSome <| l
 
-let moveLeft f size : 'a board -> 'a board
-    = move f size |> List.map
-let moveRight f size: 'a board -> 'a board
-    = List.rev << move f size << List.rev |> List.map
-let moveUp f size : 'a board -> 'a board
-    = transpose >> moveLeft f size >> transpose
-let moveDown f size : 'a board -> 'a board
-    = transpose << moveRight f size << transpose
+let moveLeft f : 'a board -> 'a board
+    = move f |> List.map
+let moveRight f : 'a board -> 'a board
+    = List.rev << move f << List.rev |> List.map
+let moveUp f : 'a board -> 'a board
+    = transpose >> moveLeft f >> transpose
+let moveDown f : 'a board -> 'a board
+    = transpose << moveRight f << transpose
 
-let moveDir f size dir : 'a board -> 'a board
+let moveDir f dir : 'a board -> 'a board
     = match dir with
-        | Left -> moveLeft f size
-        | Down -> moveDown f size 
-        | Up -> moveUp f size 
-        | Right -> moveRight f size 
+        | Left -> moveLeft f
+        | Down -> moveDown f 
+        | Up -> moveUp f 
+        | Right -> moveRight f 
 
 //n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
 //Option.get must be safe here because of the Option.isSome
@@ -104,4 +104,4 @@ type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a boar
         let size = size
         let board = List.init size (fun x -> List.init size (fun y -> Option<'a>.None))
         let toString = defaultArg str <| fun b -> b.ToString()
-        Board(board, moveDir op size, values, size, win, toString)
+        Board(board, moveDir op, values, size, win, toString)
