@@ -1,6 +1,5 @@
 ﻿module _2048
 
-open System
 open FSharpx.Option
 open Aether
 open Aether.Operators
@@ -8,9 +7,8 @@ open Aether.Operators
 let fill = FSharpx.Collections.List.fill
 let transpose = FSharpx.Collections.List.transpose
 
-type 'a cell = 'a option
-type 'a row = 'a cell list
-type 'a board = 'a row list
+type 'a row = 'a option list
+type 'a board = 'a option list list
 type Direction = Up | Left | Right |Down
  
 let rec merge f xs
@@ -21,19 +19,19 @@ let rec merge f xs
                             then (f <!> x <*> y) :: merge f xs
                             else x :: merge f (y :: xs)
 
-let move f (l : 'a row) : 'a row
-    = fill l.Length None <<  merge f  << List.filter Option.isSome <| l
+let move f (row : 'a row) : 'a row
+    = fill row.Length None << merge f << List.filter Option.isSome <| row
 
-let moveLeft f : 'a board -> 'a board
+let moveLeft f
     = move f |> List.map
-let moveRight f : 'a board -> 'a board
+let moveRight f
     = List.rev << move f << List.rev |> List.map
-let moveUp f : 'a board -> 'a board
+let moveUp f
     = transpose >> moveLeft f >> transpose
-let moveDown f : 'a board -> 'a board
+let moveDown f
     = transpose << moveRight f << transpose
 
-let moveDir f dir : 'a board -> 'a board
+let moveDir f dir
     = match dir with
         | Left -> moveLeft f
         | Down -> moveDown f 
@@ -42,43 +40,43 @@ let moveDir f dir : 'a board -> 'a board
 
 //n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
 //Option.get must be safe here because of the Option.isSome
-let findOpenCells<'a when 'a : equality> : 'a option list list -> (int*int) list = 
-    let rowEmpty (i:int) (ns: 'a option list): (int*int) option list
+let findOpenCells<'a when 'a : equality> : 'a board -> (int*int) list = 
+    let rowEmpty (i : int) (ns : 'a row) : (int*int) option list
         = List.mapi (fun j x -> match x with 
                                   | None -> Some (i, j) 
                                   | Some _ -> None) ns
     List.map Option.get << List.filter Option.isSome << List.concat << List.mapi rowEmpty
 
-let insertNewCell k (i,j): 'a list list -> 'a list list =
-    k ^= (List.pos_ i >?> List.pos_ j)
+let insertNewCell (i,j) =
+    Optic.set (List.pos_ i >?> List.pos_ j) << returnM
 
 let isWin win =
     List.reduce (||) << List.map (List.exists ((=) <| Some win))
 
-let boardFull<'a when 'a : equality> :('a board -> bool)
+let boardFull<'a when 'a : equality> : 'a board -> bool
     = List.isEmpty << findOpenCells
 
-let rec rowHasMerges (row: 'a list): bool
+let rec rowHasMerges row
     = match row with
         | [] -> false
         | [x] -> false
         | (x :: y :: xs) -> if x = y then true else rowHasMerges (y::xs)
 
-let rec boardHasMerges (b: 'a board)
-    = List.reduce (||) (List.map rowHasMerges <| b) 
-    || List.reduce (||) (List.map rowHasMerges <| transpose b)
+let rec boardHasMerges board
+    = List.reduce (||) (List.map rowHasMerges <| board) 
+    || List.reduce (||) (List.map rowHasMerges <| transpose board)
 
 let hasNextMove b = not (boardFull b) || (boardHasMerges b)
 
-let insertAtRandom (x,y) (rnum: Random) (board: 'a board) : 'a board
+let insertAtRandom (x,y) (rnum: System.Random) board
     = let value = match rnum.Next 9 with
-                    | 0 -> Some y 
-                    | _ -> Some x
+                    | 0 -> y 
+                    | _ -> x
       let openCells = findOpenCells board
       let newCell = openCells.[rnum.Next openCells.Length] 
-      insertNewCell value newCell board
+      insertNewCell newCell value board
 
-type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a board -> 'a board, values: 'a*'a, size: int, win: 'a, str: 'a board -> string) = 
+type Board<'a when 'a : equality>(board:'a board, moveDir:Direction -> 'a board -> 'a board, values:'a*'a, size:int, win:'a, str:'a board -> string) = 
     member this.Board = board
 
     member this.MoveDir dir
@@ -100,7 +98,7 @@ type Board<'a when 'a : equality>(board: 'a board, moveDir: Direction -> 'a boar
 
     override x.GetHashCode() = hash x.Board
 
-    static member construct((size: int), (values: 'a*'a), (win: 'a), (op: 'a -> 'a -> 'a), (?str: 'a board -> string)) : 'a Board =
+    static member construct(size:int, values:'a*'a, win:'a, op:'a -> 'a -> 'a, ?str:'a board -> string) : 'a Board =
         let size = size
         let board = List.init size (fun x -> List.init size (fun y -> Option<'a>.None))
         let toString = defaultArg str <| fun b -> b.ToString()
