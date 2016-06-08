@@ -29,7 +29,7 @@ let boardFormat =
 
 [<EntryPoint>]
 let main argv = 
-    let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),toString=boardFormat)
+    let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),str=boardFormat)
 
     let rec game (rnum : Random) (board : 'a Board) : unit =
           do
