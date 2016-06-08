@@ -26,9 +26,9 @@ module private __2048 =
         = fill row.Length None << merge f << List.filter Option.isSome <| row
 
     let moveLeft f
-        = move f |> List.map
+        = List.map (move f)
     let moveRight f
-        = List.rev << move f << List.rev |> List.map
+        = List.map (List.rev << move f << List.rev)
     let moveUp f
         = transpose >> moveLeft f >> transpose
     let moveDown f
@@ -53,9 +53,6 @@ module private __2048 =
     let insertNewCell (i,j) =
         Optic.set (List.pos_ i >?> List.pos_ j) << returnM
 
-    let isWin win =
-        List.reduce (||) << List.map (List.exists ((=) <| Some win))
-
     let boardFull<'a when 'a : equality> : 'a board -> bool
         = List.isEmpty << findOpenCells
 
@@ -66,10 +63,8 @@ module private __2048 =
             | (x :: y :: xs) -> if x = y then true else rowHasMerges (y::xs)
 
     let rec boardHasMerges board
-        = List.reduce (||) (List.map rowHasMerges <| board) 
-        || List.reduce (||) (List.map rowHasMerges <| transpose board)
-
-    let hasNextMove b = not (boardFull b) || (boardHasMerges b)
+        = List.reduce (||) [for row in board do yield rowHasMerges row] 
+        || List.reduce (||) [for row in transpose board do yield rowHasMerges row]
 
     let insertAtRandom (x,y) (rnum: System.Random) board
         = let value = match rnum.Next 9 with
@@ -90,9 +85,11 @@ type Board<'a when 'a : equality>(board:'a board, moveDir:Direction -> 'a board 
     member this.InsertAtRandom rnum
         = Board(insertAtRandom values rnum this.Board, moveDir, values, size, win, str)
 
-    member this.HasNextMove = hasNextMove this.Board
+    member this.HasNextMove
+        = not (List.isEmpty << findOpenCells <| this.Board) || (boardHasMerges this.Board)
 
-    member this.IsWin = isWin win this.Board
+    member this.IsWin = //isWin win this.Board
+        List.reduce (||) << List.map (List.exists ((=) <| Some win)) <| this.Board
 
     override this.ToString() = str this.Board
 

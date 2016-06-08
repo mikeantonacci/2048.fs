@@ -4,9 +4,7 @@ open System
 open FSharpx.Option
 open _2048
 
-let initInsert rnum (board: 'a Board) = board.InsertAtRandom rnum
-
-let initialize rnum = initInsert rnum << initInsert rnum 
+let initialize rnum (board : 'a Board) = (board . InsertAtRandom rnum).InsertAtRandom rnum
 
 let hjkl key : Direction option 
     = match key with
@@ -22,10 +20,7 @@ let boardFormat =
             | Some n -> sprintf "%-4i" n 
             | None -> "    "
 
-    let rowFormat: int option list -> string
-        = String.concat "|" << List.map cellFormat
-
-    String.concat "\n" << List.map rowFormat 
+    String.concat "\n" << List.map (String.concat "|" << List.map cellFormat)
 
 [<EntryPoint>]
 let main argv = 
@@ -53,21 +48,20 @@ let main argv =
               else game rnum newBoard
 
     and gameOver (rand : Random) (b : bool) start : unit
-        = do printfn "%s" (if b 
-                           then "Game Over. Play Again? (y/n)" 
-                           else "2048! Play Again? (y/n)")
-          let key = Console.ReadKey().KeyChar
-          do
-              Console.Clear()
-              match key with
-                | 'y' -> game rand <| initialize rand start
-                | 'n' -> Environment.Exit 0
-                | _ -> gameOver rand true start
-          ()
+        = do 
+            printfn "%s" (if b 
+                          then "Game Over. Play Again? (y/n)" 
+                          else "2048! Play Again? (y/n)")
+            let key = Console.ReadKey().KeyChar
+            Console.Clear()
+            match key with
+              | 'y' -> game rand <| initialize rand start
+              | 'n' -> Environment.Exit 0
+              | _ -> gameOver rand true start
 
     do
         printfn "%s" "Press any key to play."
         Console.ReadKey() |> ignore
-    let rnum = new Random()
-    do game rnum (initialize rnum start)
+        let rnum = Random()
+        game rnum (initialize rnum start)
     0 // return an integer exit code
