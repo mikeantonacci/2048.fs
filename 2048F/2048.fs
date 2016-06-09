@@ -1,6 +1,5 @@
 ﻿namespace _2048
 
-open FSharpx.Option
 open FSharpx.Collections.List
 open Aether
 open Aether.Operators
@@ -13,20 +12,19 @@ module private __2048 =
      
     let rec merge f xs
         = match xs with
-            | (x :: y :: xs) when x = y -> (f <!> x <*> y) :: merge f xs
+            | (x :: y :: xs) when x = y -> (f x y) :: merge f xs
             | (x :: xs) -> x :: merge f (xs)
-            | [x] -> [x]  
-            | [] -> []  
+            | x -> x
 
     let move f (row : 'a option list) : 'a option list
-        = fill row.Length None << merge f << List.filter Option.isSome <| row
+        = fill row.Length None << List.map Option.Some << merge f << List.choose id <| row
 
     let moveLeft f
         = List.map (move f)
     let moveRight f
         = List.map (List.rev << move f << List.rev)
     let moveUp f
-        = transpose >> moveLeft f >> transpose
+        = transpose << moveLeft f << transpose
     let moveDown f
         = transpose << moveRight f << transpose
 
@@ -37,8 +35,6 @@ module private __2048 =
             | Up -> moveUp f 
             | Right -> moveRight f 
 
-    //n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
-    //Option.get must be safe here because of the Option.isSome
     let findOpenCells<'a when 'a : equality> : 'a board -> (int*int) list = 
         let rowEmpty (i : int) (ns : 'a option list) : (int*int) option list
             = List.mapi (fun j x -> match x with 
@@ -47,13 +43,10 @@ module private __2048 =
         List.choose id << List.concat << List.mapi rowEmpty
 
     let insertNewCell (i,j) =
-        Optic.set (List.pos_ i >?> List.pos_ j) << returnM
-
-    let boardFull<'a when 'a : equality> : 'a board -> bool
-        = List.isEmpty << findOpenCells
+        Optic.set (List.pos_ i >?> List.pos_ j) << Option.Some
 
     let rowHasMerges<'a when 'a : equality> : 'a option list -> bool
-         = Seq.exists (fun (x,y) -> x = y) << Seq.pairwise << List.toSeq
+         = Seq.exists ((<||) (=)) << Seq.pairwise << List.toSeq
 
     let boardHasMerges board = 
         let hasRowMerges = List.exists id << List.map rowHasMerges
