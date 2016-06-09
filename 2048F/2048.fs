@@ -1,6 +1,7 @@
 ﻿namespace _2048
 
 open FSharpx.Option
+open FSharpx.Collections.List
 open Aether
 open Aether.Operators
 
@@ -8,19 +9,15 @@ type Direction = Up | Left | Right |Down
 
 module private __2048 =
 
-    let fill = FSharpx.Collections.List.fill
-    let transpose = FSharpx.Collections.List.transpose
-
     type 'a row = 'a option list
     type 'a board = 'a option list list
      
     let rec merge f xs
         = match xs with
-            | [] -> []
-            | [x] -> [x]
-            | (x :: y :: xs) -> if x = y 
-                                then (f <!> x <*> y) :: merge f xs
-                                else x :: merge f (y :: xs)
+            | (x :: y :: xs) when x = y -> (f <!> x <*> y) :: merge f xs
+            | (x :: xs) -> x :: merge f (xs)
+            | [x] -> [x]  
+            | [] -> []  
 
     let move f (row : 'a row) : 'a row
         = fill row.Length None << merge f << List.filter Option.isSome <| row
@@ -48,7 +45,7 @@ module private __2048 =
             = List.mapi (fun j x -> match x with 
                                       | None -> Some (i, j) 
                                       | Some _ -> None) ns
-        List.map Option.get << List.filter Option.isSome << List.concat << List.mapi rowEmpty
+        List.choose id << List.concat << List.mapi rowEmpty
 
     let insertNewCell (i,j) =
         Optic.set (List.pos_ i >?> List.pos_ j) << returnM
@@ -68,8 +65,8 @@ module private __2048 =
                         | 0 -> y 
                         | _ -> x
           let openCells = findOpenCells board
-          let newCell = openCells.[rnum.Next openCells.Length] 
-          insertNewCell newCell value board
+          let (i,j) = openCells.[rnum.Next openCells.Length] 
+          insertNewCell (i,j) value board
 
 open __2048
 

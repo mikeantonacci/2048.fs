@@ -4,7 +4,7 @@ open System
 open FSharpx.Option
 open _2048
 
-let initialize rnum (board : 'a Board) = (board . InsertAtRandom rnum).InsertAtRandom rnum
+let initialize rnum (board : 'a Board) = (board.InsertAtRandom rnum).InsertAtRandom rnum
 
 let hjkl key : Direction option 
     = match key with
