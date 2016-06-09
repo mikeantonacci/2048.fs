@@ -15,37 +15,38 @@ let hjkl key : Direction option
 let boardFormat =
     let cellFormat x : string
         = match x with 
-            | Some n -> sprintf "%-4i" n 
-            | None -> "    "
+            | Some n -> sprintf "%6i" n 
+            | None -> "      "
+    let surCat s b = (fun x -> s + b + x + b + s) << String.concat (b + s + b)
+    surCat "+------+------+------+------+" "\n" << List.map ((surCat "|" "") << List.map cellFormat)
 
-    String.concat "\n" << List.map (String.concat "|" << List.map cellFormat)
+let updateScreen board = do
+    Console.Clear()
+    printfn "%s" <| board.ToString() 
 
 [<EntryPoint>]
 let main argv = 
     let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),str=boardFormat,rand=System.Random())
 
-    let rec game (rnum : Random) (board : 'a Board) : unit =
+    let rec game (board : 'a Board) : unit =
           do
-              if not board.HasNextMove then gameOver rnum true start
-              Console.Clear()
-              printfn "%s" <| board.ToString()
+              if not board.HasNextMove then gameOver true
+              updateScreen board
               let key = Console.ReadKey().Key
               let movedBoard = board.MoveDir <!> (hjkl key) |> getOrElse board
-              Console.Clear()
-              printfn "%s" <| movedBoard.ToString()
+              updateScreen movedBoard
               let newBoard
                   = if board <> movedBoard
                     then 
                         do async {do! Async.Sleep 100} |> Async.RunSynchronously
                         movedBoard.InsertAtRandom
                     else movedBoard
-              Console.Clear()
-              printfn "%s" <| newBoard.ToString()
-              if newBoard.IsWin
-              then gameOver rnum false start
-              else game rnum newBoard
+              updateScreen newBoard
+              match newBoard.IsWin with
+                | true -> gameOver false
+                | false -> game newBoard
 
-    and gameOver (rand : Random) (b : bool) start : unit
+    and gameOver (b : bool) : unit
         = do 
             printfn "%s" (if b 
                           then "Game Over. Play Again? (y/n)" 
@@ -53,13 +54,12 @@ let main argv =
             let key = Console.ReadKey().KeyChar
             Console.Clear()
             match key with
-              | 'y' -> game rand start.InsertAtRandom.InsertAtRandom
+              | 'y' -> game start.InsertAtRandom.InsertAtRandom
               | 'n' -> Environment.Exit 0
-              | _ -> gameOver rand true start.InsertAtRandom.InsertAtRandom
+              | _ -> gameOver true
 
     do
         printfn "%s" "Press any key to play."
         Console.ReadKey() |> ignore
-        let rnum = Random()
-        game rnum start.InsertAtRandom.InsertAtRandom
+        game start.InsertAtRandom.InsertAtRandom
     0 // return an integer exit code
