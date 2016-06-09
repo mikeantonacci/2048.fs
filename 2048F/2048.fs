@@ -9,7 +9,6 @@ type Direction = Up | Left | Right |Down
 
 module private __2048 =
 
-    type 'a row = 'a option list
     type 'a board = 'a option list list
      
     let rec merge f xs
@@ -19,7 +18,7 @@ module private __2048 =
             | [x] -> [x]  
             | [] -> []  
 
-    let move f (row : 'a row) : 'a row
+    let move f (row : 'a option list) : 'a option list
         = fill row.Length None << merge f << List.filter Option.isSome <| row
 
     let moveLeft f
@@ -41,7 +40,7 @@ module private __2048 =
     //n param expects the i from List.mapi in boardEmpty, builds the coordinates of the empty cells this way
     //Option.get must be safe here because of the Option.isSome
     let findOpenCells<'a when 'a : equality> : 'a board -> (int*int) list = 
-        let rowEmpty (i : int) (ns : 'a row) : (int*int) option list
+        let rowEmpty (i : int) (ns : 'a option list) : (int*int) option list
             = List.mapi (fun j x -> match x with 
                                       | None -> Some (i, j) 
                                       | Some _ -> None) ns
@@ -53,12 +52,12 @@ module private __2048 =
     let boardFull<'a when 'a : equality> : 'a board -> bool
         = List.isEmpty << findOpenCells
 
-    let rowHasMerges<'a when 'a : equality> : 'a row -> bool
+    let rowHasMerges<'a when 'a : equality> : 'a option list -> bool
          = Seq.exists (fun (x,y) -> x = y) << Seq.pairwise << List.toSeq
 
-    let rec boardHasMerges board
-        = List.exists id [for row in board do yield rowHasMerges row] 
-        || List.exists id [for row in transpose board do yield rowHasMerges row]
+    let boardHasMerges board = 
+        let hasRowMerges = List.exists id << List.map rowHasMerges
+        hasRowMerges board || hasRowMerges <| transpose board 
 
     let insertAtRandom (x,y) (rnum: System.Random) board
         = let value = match rnum.Next 9 with
@@ -70,22 +69,23 @@ module private __2048 =
 
 open __2048
 
-type Board<'a when 'a : equality>(board:'a board, moveDir:Direction -> 'a board -> 'a board, values:'a*'a, size:int, win:'a, str:'a board -> string) = 
-    member this.Board = board
+type Board<'a when 'a : equality> private (board:'a board, moveDir:Direction -> 'a board -> 'a board, values:'a*'a, size:int, win:'a, str:'a board -> string, rand:System.Random) = 
+
+    member val Board = board
 
     member this.MoveDir dir
-        = Board(moveDir dir this.Board, moveDir, values, size, win, str)
+        = Board(moveDir dir board, moveDir, values, size, win, str, rand)
 
-    member this.InsertAtRandom rnum
-        = Board(insertAtRandom values rnum this.Board, moveDir, values, size, win, str)
+    member this.InsertAtRandom
+        = Board(insertAtRandom values rand board, moveDir, values, size, win, str, rand)
 
     member this.HasNextMove
-        = not (List.isEmpty << findOpenCells <| this.Board) || (boardHasMerges this.Board)
+        = not (List.isEmpty << findOpenCells <| board) || (boardHasMerges board)
 
-    member this.IsWin = //isWin win this.Board
-        List.exists id << List.map (List.exists ((=) <| Some win)) <| this.Board
+    member this.IsWin =
+        List.exists id << List.map (List.exists ((=) <| Some win)) <| board
 
-    override this.ToString() = str this.Board
+    override this.ToString() = str board
 
     override x.Equals(yobj) = 
         match yobj with
@@ -94,8 +94,7 @@ type Board<'a when 'a : equality>(board:'a board, moveDir:Direction -> 'a board 
 
     override x.GetHashCode() = hash x.Board
 
-    static member construct(size:int, values:'a*'a, win:'a, op:'a -> 'a -> 'a, ?str:'a board -> string) : 'a Board =
-        let size = size
+    static member construct(size:int, values:'a*'a, win:'a, op:'a -> 'a -> 'a, rand: System.Random, ?str:'a board -> string) : 'a Board =
         let board = List.init size (fun x -> List.init size (fun y -> Option<'a>.None))
         let toString = defaultArg str <| fun b -> b.ToString()
-        Board(board, moveDir op, values, size, win, toString)
+        Board(board, moveDir op, values, size, win, toString, rand)

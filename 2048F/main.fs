@@ -4,8 +4,6 @@ open System
 open FSharpx.Option
 open _2048
 
-let initialize rnum (board : 'a Board) = (board.InsertAtRandom rnum).InsertAtRandom rnum
-
 let hjkl key : Direction option 
     = match key with
         | ConsoleKey.H | ConsoleKey.A | ConsoleKey.LeftArrow -> Some Left
@@ -24,7 +22,7 @@ let boardFormat =
 
 [<EntryPoint>]
 let main argv = 
-    let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),str=boardFormat)
+    let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),str=boardFormat,rand=System.Random())
 
     let rec game (rnum : Random) (board : 'a Board) : unit =
           do
@@ -39,11 +37,11 @@ let main argv =
                   = if board <> movedBoard
                     then 
                         do async {do! Async.Sleep 100} |> Async.RunSynchronously
-                        movedBoard.InsertAtRandom rnum
+                        movedBoard.InsertAtRandom
                     else movedBoard
               Console.Clear()
               printfn "%s" <| newBoard.ToString()
-              if newBoard.IsWin 
+              if newBoard.IsWin
               then gameOver rnum false start
               else game rnum newBoard
 
@@ -55,13 +53,13 @@ let main argv =
             let key = Console.ReadKey().KeyChar
             Console.Clear()
             match key with
-              | 'y' -> game rand <| initialize rand start
+              | 'y' -> game rand start.InsertAtRandom.InsertAtRandom
               | 'n' -> Environment.Exit 0
-              | _ -> gameOver rand true start
+              | _ -> gameOver rand true start.InsertAtRandom.InsertAtRandom
 
     do
         printfn "%s" "Press any key to play."
         Console.ReadKey() |> ignore
         let rnum = Random()
-        game rnum (initialize rnum start)
+        game rnum start.InsertAtRandom.InsertAtRandom
     0 // return an integer exit code
