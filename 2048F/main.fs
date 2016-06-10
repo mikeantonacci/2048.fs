@@ -51,11 +51,11 @@ let main argv =
             printfn "%s" (if b 
                           then "Game Over. Play Again? (y/n)" 
                           else "2048! Play Again? (y/n)")
-            let key = Console.ReadKey().KeyChar
+            let key = Console.ReadKey().Key
             Console.Clear()
             match key with
-              | 'y' -> game start.InsertAtRandom.InsertAtRandom
-              | 'n' -> Environment.Exit 0
+              | ConsoleKey.Y -> game start.InsertAtRandom.InsertAtRandom
+              | ConsoleKey.N -> Environment.Exit 0
               | _ -> gameOver true
 
     do
