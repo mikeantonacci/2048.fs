@@ -24,13 +24,17 @@ let updateScreen board = do
     Console.Clear()
     printfn "%s" <| board.ToString() 
 
+type GameOver = WIN | LOSE
+
+Console.CancelKeyPress.Add(fun _ -> exit 0)
+
 [<EntryPoint>]
 let main argv = 
     let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),str=boardFormat,rand=System.Random())
 
     let rec game (board : 'a Board) : unit =
           do
-              if not board.HasNextMove then gameOver true
+              if not board.HasNextMove then gameOver LOSE
               updateScreen board
               let key = Console.ReadKey().Key
               let movedBoard = board.MoveDir <!> (hjkl key) |> getOrElse board
@@ -43,20 +47,22 @@ let main argv =
                     else movedBoard
               updateScreen newBoard
               match newBoard.IsWin with
-                | true -> gameOver false
+                | true -> gameOver WIN
                 | false -> game newBoard
 
-    and gameOver (b : bool) : unit
+    and gameOver state : unit
         = do 
-            printfn "%s" (if b 
-                          then "Game Over. Play Again? (y/n)" 
-                          else "2048! Play Again? (y/n)")
+            match state with
+              | WIN -> printf "%s" "2048! Play Again? (y/n)"
+              | LOSE -> printf "%s" "Game Over. Play Again? (y/n)"
             let key = Console.ReadKey().Key
-            Console.Clear()
+            Console.CursorLeft <- Console.CursorLeft - 1
+            Console.Write(' ')
+            Console.CursorLeft <- 0
             match key with
               | ConsoleKey.Y -> game start.InsertAtRandom.InsertAtRandom
               | ConsoleKey.N -> Environment.Exit 0
-              | _ -> gameOver true
+              | _ -> gameOver state
 
     do
         printfn "%s" "Press any key to play."
