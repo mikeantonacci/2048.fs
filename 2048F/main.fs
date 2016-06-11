@@ -1,6 +1,7 @@
 ﻿module main
 
 open System
+open FSharpx
 open FSharpx.Option
 open _2048
 
@@ -20,8 +21,9 @@ let boardFormat =
     let surCat s b = (fun x -> s + b + x + b + s) << String.concat (b + s + b)
     surCat "+------+------+------+------+" "\n" << List.map ((surCat "|" "") << List.map cellFormat)
 
-let updateScreen board = do
+let updateScreen (board : int Board) = do
     Console.Clear()
+    printfn "Score: %d" <| board.Score
     printfn "%s" <| board.ToString() 
 
 type GameOver = WIN | LOSE
@@ -30,9 +32,9 @@ Console.CancelKeyPress.Add(fun _ -> exit 0)
 
 [<EntryPoint>]
 let main argv = 
-    let start = Board.construct(size=4,values=(2,4),win=2048,op=(+),str=boardFormat,rand=System.Random())
+    let start = Board.construct(size=4,values=(2,4),win=2048,m=Monoid.sumInt,str=boardFormat,rand=System.Random())
 
-    let rec game (board : 'a Board) : unit =
+    let rec game (board : int Board) : unit =
           do
               if not board.HasNextMove then gameOver LOSE
               updateScreen board
